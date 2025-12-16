@@ -30,7 +30,7 @@ class ImageToVideoRequest(BaseModel):
 
 
 class ImageToVideoResponse(BaseModel):
-    urls: List[str]
+    url: str
 
 
 app = FastAPI(title="FC Morphix API", version="1.0.0")
@@ -61,7 +61,7 @@ async def image_to_video(payload: ImageToVideoRequest):
     upload each segment to S3, and return their URLs.
     """
     try:
-        urls = generate_multisegment_videos_to_s3(
+        final_url = generate_multisegment_videos_to_s3(
             segment_prompts=payload.segment_prompts,
             image_prompts=payload.image_prompts,
             image_urls=payload.image_urls,
@@ -70,6 +70,6 @@ async def image_to_video(payload: ImageToVideoRequest):
             poll_interval=payload.poll_interval,
             max_retries=payload.max_retries,
         )
-        return ImageToVideoResponse(urls=urls)
+        return ImageToVideoResponse(url=final_url)
     except Exception as exc:  # pragma: no cover - FastAPI handles formatting
         raise HTTPException(status_code=500, detail=str(exc)) from exc

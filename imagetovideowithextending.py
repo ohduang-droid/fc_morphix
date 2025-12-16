@@ -355,11 +355,11 @@ def generate_multisegment_videos_to_s3(
     key_prefix: str | None = None,
     poll_interval: int | None = None,
     max_retries: int | None = None,
-) -> list[str]:
+) -> str:
     """
-    Generate a sequence of Veo segments and upload each to S3.
+    Generate a sequence of Veo segments and upload only the final video to S3.
 
-    Returns the list of public video URLs.
+    Returns the S3 URL of the last segment.
     """
 
     load_env_file()
@@ -399,10 +399,6 @@ def generate_multisegment_videos_to_s3(
         poll_interval=poll,
     )
 
-    s3_urls: list[str] = []
-    url = save_and_upload_video(client, current_video, final_bucket, final_prefix)
-    s3_urls.append(url)
-
     for idx in range(1, len(prompts)):
         is_last = idx == len(prompts) - 1
         current_video = generate_extend_video(
@@ -413,10 +409,9 @@ def generate_multisegment_videos_to_s3(
             max_retries=retries,
             allow_downgrade=is_last,
         )
-        url = save_and_upload_video(client, current_video, final_bucket, final_prefix)
-        s3_urls.append(url)
-
-    return s3_urls
+    # Upload only the final video
+    final_url = save_and_upload_video(client, current_video, final_bucket, final_prefix)
+    return final_url
 
 
 # ==============================
@@ -430,7 +425,7 @@ def main():
     image_prompts = parse_json_array(args.image_prompts, DEFAULT_IMAGE_PROMPTS)
     image_urls = parse_json_array(args.image_urls, [])
 
-    urls = generate_multisegment_videos_to_s3(
+    final_url = generate_multisegment_videos_to_s3(
         segment_prompts=segment_prompts,
         image_prompts=image_prompts,
         image_urls=image_urls,
@@ -441,8 +436,7 @@ def main():
     )
 
     print("\n🎉 All segments uploaded to S3:")
-    for url in urls:
-        print(url)
+    print(final_url)
 
 
 if __name__ == "__main__":
