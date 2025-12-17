@@ -10,6 +10,7 @@ import boto3
 import requests
 from PIL import Image
 from google import genai
+from google.genai import types
 
 
 def load_env_file(path: str = ".env"):
@@ -38,7 +39,11 @@ def parse_args():
         description="Generate an image from prompt + reference image and upload to S3."
     )
     parser.add_argument("prompt", help="Prompt used to instruct Gemini.")
-    parser.add_argument("image_url", help="URL of the reference image to feed Gemini.")
+    parser.add_argument(
+        "image_urls",
+        nargs="+",
+        help="One or more reference image URLs to feed Gemini.",
+    )
     parser.add_argument(
         "--bucket",
         default=get_default_bucket(),
@@ -102,7 +107,7 @@ def main():
     args = parse_args()
     result = generate_images_to_s3(
         prompt=args.prompt,
-        image_url=args.image_url,
+        image_urls=args.image_urls,
         bucket=args.bucket,
         key_prefix=args.key_prefix,
         model=args.model,
@@ -145,7 +150,7 @@ def get_default_model() -> str:
 
 def generate_images_to_s3(
     prompt: str,
-    image_url: str,
+    image_urls: List[str],
     bucket: str | None = None,
     key_prefix: str | None = None,
     model: str | None = None,
@@ -166,10 +171,17 @@ def generate_images_to_s3(
     final_model = model or get_default_model()
 
     client = genai.Client()
-    reference_image = download_image(image_url)
+    if not image_urls:
+        raise ValueError("At least one image URL is required.")
+
+    contents = [prompt]
+    for url in image_urls:
+        image = download_image(url)
+        contents.append(pil_image_to_part(image))
+
     response = client.models.generate_content(
         model=final_model,
-        contents=[prompt, reference_image],
+        contents=contents,
     )
 
     texts: List[str] = []
@@ -183,6 +195,16 @@ def generate_images_to_s3(
             urls.append(url)
 
     return {"texts": texts, "urls": urls}
+
+
+def pil_image_to_part(image: Image.Image) -> types.Part:
+    buffer = BytesIO()
+    image.save(buffer, format="PNG")
+    buffer.seek(0)
+    return types.Part.from_bytes(
+        data=buffer.read(),
+        mime_type="image/png",
+    )
 
 
 if __name__ == "__main__":
