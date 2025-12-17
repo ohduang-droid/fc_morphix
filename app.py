@@ -12,6 +12,7 @@ class ImageToImageRequest(BaseModel):
     image_url: str
     bucket: Optional[str] = None
     key_prefix: Optional[str] = None
+    model: Optional[str] = None
 
 
 class ImageToImageResponse(BaseModel):
@@ -48,6 +49,7 @@ async def image_to_image(payload: ImageToImageRequest):
             image_url=payload.image_url,
             bucket=payload.bucket,
             key_prefix=payload.key_prefix,
+            model=payload.model,
         )
         return ImageToImageResponse(urls=result["urls"], texts=result["texts"])
     except Exception as exc:  # pragma: no cover - FastAPI handles formatting
