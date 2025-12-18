@@ -240,13 +240,26 @@ def build_object_key(prefix: str, extension: str) -> str:
 
 
 def upload_file_to_s3(file_path: str, bucket: str, key_prefix: str) -> str:
-    session = boto3.session.Session()
+    # 获取 AWS 凭证和区域
+    aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID")
+    aws_secret_access_key = os.environ.get("AWS_SECRET_ACCESS_KEY")
     region = (
-        session.region_name
-        or os.environ.get("AWS_REGION")
+        os.environ.get("AWS_REGION")
         or os.environ.get("AWS_DEFAULT_REGION")
         or "us-east-1"
     )
+    
+    # 创建 boto3 Session，如果环境变量中有凭证则显式传入
+    if aws_access_key_id and aws_secret_access_key:
+        session = boto3.session.Session(
+            aws_access_key_id=aws_access_key_id,
+            aws_secret_access_key=aws_secret_access_key,
+            region_name=region
+        )
+    else:
+        # 如果没有显式凭证，尝试使用默认凭证链（环境变量、配置文件、IAM 角色等）
+        session = boto3.session.Session(region_name=region)
+    
     s3_client = session.client("s3", region_name=region)
     object_key = build_object_key(key_prefix, "mp4")
 

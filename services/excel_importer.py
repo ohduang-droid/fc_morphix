@@ -108,7 +108,7 @@ class ExcelImporter:
         
         # S3 配置
         self.s3_bucket = s3_bucket or os.getenv("S3_BUCKET") or os.getenv("S3_BUCKET_NAME") or "amzn-s3-fc-bucket"
-        self.s3_key_prefix = s3_key_prefix or os.getenv("S3_KEY_PREFIX") or "creator-signatures"
+        self.s3_key_prefix = s3_key_prefix or os.getenv("S3_CREATOR_PREFIX") or "creator-signatures"
         
         # 记录 Dify 配置状态
         if self.dify_url and self.dify_api_key:
@@ -199,17 +199,37 @@ class ExcelImporter:
         try:
             # 将图片保存到内存缓冲区
             buffer = BytesIO()
-            image.save(buffer, format=extension.upper() if extension.upper() in ["PNG", "JPEG", "JPG"] else "PNG")
+            # PIL 只接受 "JPEG" 作为格式，不接受 "JPG"，需要映射
+            format_map = {
+                "PNG": "PNG",
+                "JPEG": "JPEG",
+                "JPG": "JPEG",  # JPG 映射到 JPEG
+                "GIF": "GIF",
+                "WEBP": "WEBP"
+            }
+            pil_format = format_map.get(extension.upper(), "PNG")
+            image.save(buffer, format=pil_format)
             buffer.seek(0)
             
-            # 获取 AWS 区域
-            session = boto3.session.Session()
+            # 获取 AWS 凭证和区域
+            aws_access_key_id = os.environ.get("AWS_ACCESS_KEY_ID")
+            aws_secret_access_key = os.environ.get("AWS_SECRET_ACCESS_KEY")
             region = (
-                session.region_name
-                or os.environ.get("AWS_REGION")
+                os.environ.get("AWS_REGION")
                 or os.environ.get("AWS_DEFAULT_REGION")
                 or "us-east-1"
             )
+            
+            # 创建 boto3 Session，如果环境变量中有凭证则显式传入
+            if aws_access_key_id and aws_secret_access_key:
+                session = boto3.session.Session(
+                    aws_access_key_id=aws_access_key_id,
+                    aws_secret_access_key=aws_secret_access_key,
+                    region_name=region
+                )
+            else:
+                # 如果没有显式凭证，尝试使用默认凭证链（环境变量、配置文件、IAM 角色等）
+                session = boto3.session.Session(region_name=region)
             
             # 创建 S3 客户端
             s3_client = session.client("s3", region_name=region)
@@ -1115,7 +1135,7 @@ def import_creators_from_excel(
         dify_url: Dify API URL (可选，从环境变量 DIFY_URL 获取)
         dify_user: Dify API User (可选，从环境变量 DIFY_USER 获取)
         s3_bucket: S3 Bucket 名称 (可选，从环境变量 S3_BUCKET 获取)
-        s3_key_prefix: S3 键前缀 (可选，从环境变量 S3_KEY_PREFIX 获取，默认 "creator-signatures")
+        s3_key_prefix: S3 键前缀 (可选，从环境变量 S3_CREATOR_PREFIX 获取，默认 "creator-signatures")
         
     Note:
         dify_api_key 将从环境变量 DIFY_API_KEY_TOKEN 自动获取

@@ -67,10 +67,11 @@ def generate_image(
     """
     调用图片生成 API 生成一张图片
     """
+    model = os.getenv("SCENE_MODEL", "gemini-3-pro-image-preview")
     payload = {
         "prompt": prompt,
         "image_url": image_url,
-        "model": "gemini-3-pro-image-preview",
+        "model": model,
         "key_prefix": key_prefix
     }
     
