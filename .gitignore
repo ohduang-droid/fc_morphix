@@ -6,7 +6,9 @@ __pycache__/
 .Python
 env/
 venv/
+.venv/
 pip-wheel-metadata/
+.uv-cache/
 
 # Environment / secrets
 .env

@@ -10,6 +10,7 @@ import boto3
 import requests
 from PIL import Image
 from google import genai
+from google.genai import types
 
 
 def load_env_file(path: str = ".env"):
@@ -38,7 +39,11 @@ def parse_args():
         description="Generate an image from prompt + reference image and upload to S3."
     )
     parser.add_argument("prompt", help="Prompt used to instruct Gemini.")
-    parser.add_argument("image_url", help="URL of the reference image to feed Gemini.")
+    parser.add_argument(
+        "image_urls",
+        nargs="+",
+        help="One or more reference image URLs to feed Gemini.",
+    )
     parser.add_argument(
         "--bucket",
         default=get_default_bucket(),
@@ -48,6 +53,11 @@ def parse_args():
         "--key-prefix",
         default=get_default_key_prefix(),
         help="Optional prefix inside the bucket. Defaults to env or 'images'.",
+    )
+    parser.add_argument(
+        "--model",
+        default=None,
+        help="Optional Gemini model. Defaults to env IMAGE_TO_IMAGE_MODEL / GEMINI_IMAGE_MODEL or 'gemini-2.5-flash-image'.",
     )
     return parser.parse_args()
 
@@ -110,9 +120,10 @@ def main():
     args = parse_args()
     result = generate_images_to_s3(
         prompt=args.prompt,
-        image_url=args.image_url,
+        image_urls=args.image_urls,
         bucket=args.bucket,
         key_prefix=args.key_prefix,
+        model=args.model,
     )
 
     for text in result["texts"]:
@@ -142,11 +153,20 @@ def get_default_key_prefix() -> str:
     return os.environ.get("S3_KEY_PREFIX", "images")
 
 
+def get_default_model() -> str:
+    return (
+        os.environ.get("IMAGE_TO_IMAGE_MODEL")
+        or os.environ.get("GEMINI_IMAGE_MODEL")
+        or "gemini-2.5-flash-image"
+    )
+
+
 def generate_images_to_s3(
     prompt: str,
-    image_url: str,
+    image_urls: List[str],
     bucket: str | None = None,
     key_prefix: str | None = None,
+    model: str | None = None,
 ) -> Dict[str, List[str]]:
     """
     Generate images using Gemini and upload results to S3.
@@ -161,11 +181,20 @@ def generate_images_to_s3(
 
     final_prefix = key_prefix or get_default_key_prefix()
 
+    final_model = model or get_default_model()
+
     client = genai.Client()
-    reference_image = download_image(image_url)
-    response = client.models.generate_content(
-        model="gemini-2.5-flash-image",
-        contents=[prompt, reference_image],
+    if not image_urls:
+        raise ValueError("At least one image URL is required.")
+
+    contents = [prompt]
+    for url in image_urls:
+        image = download_image(url)
+        contents.append(pil_image_to_part(image))
+
+    response = client.models.generate_images(
+        model=final_model,
+        contents=contents,
     )
 
     texts: List[str] = []
@@ -179,6 +208,16 @@ def generate_images_to_s3(
             urls.append(url)
 
     return {"texts": texts, "urls": urls}
+
+
+def pil_image_to_part(image: Image.Image) -> types.Part:
+    buffer = BytesIO()
+    image.save(buffer, format="PNG")
+    buffer.seek(0)
+    return types.Part.from_bytes(
+        data=buffer.read(),
+        mime_type="image/png",
+    )
 
 
 if __name__ == "__main__":

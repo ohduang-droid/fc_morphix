@@ -73,9 +73,11 @@ load_env_file()
 
 class ImageToImageRequest(BaseModel):
     prompt: str
-    image_url: str
+    image_url: Optional[str] = None
+    image_urls: Optional[List[str]] = None
     bucket: Optional[str] = None
     key_prefix: Optional[str] = None
+    model: Optional[str] = None
 
 
 class ImageToImageResponse(BaseModel):
@@ -127,11 +129,21 @@ async def image_to_image(payload: ImageToImageRequest):
     upload them to S3, and return the accessible URLs.
     """
     try:
+        image_urls: List[str] = []
+        if payload.image_urls:
+            image_urls = payload.image_urls
+        elif payload.image_url:
+            image_urls = [payload.image_url]
+
+        if not image_urls:
+            raise HTTPException(status_code=400, detail="At least one image URL is required.")
+
         result = generate_images_to_s3(
             prompt=payload.prompt,
-            image_url=payload.image_url,
+            image_urls=image_urls,
             bucket=payload.bucket,
             key_prefix=payload.key_prefix,
+            model=payload.model,
         )
         return ImageToImageResponse(urls=result["urls"], texts=result["texts"])
     except Exception as exc:  # pragma: no cover - FastAPI handles formatting
