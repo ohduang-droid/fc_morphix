@@ -179,7 +179,7 @@ def generate_images_to_s3(
         image = download_image(url)
         contents.append(pil_image_to_part(image))
 
-    response = client.models.generate_content(
+    response = client.models.generate_images(
         model=final_model,
         contents=contents,
     )
