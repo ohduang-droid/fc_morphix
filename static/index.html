@@ -1,0 +1,1606 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Creator 列表 - FC Morphix</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 3rem;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .stat-card .number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .stat-card .label {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 0.25rem;
+        }
+
+        .loading {
+            text-align: center;
+            color: white;
+            font-size: 1.2rem;
+            padding: 3rem;
+        }
+
+        .loading::after {
+            content: '...';
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            text-align: center;
+        }
+
+        .creators-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .creator-card {
+            background: white;
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+            position: relative;
+        }
+
+        .creator-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+        }
+
+        .creator-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #eee;
+        }
+
+        .action-btn {
+            flex: 1;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .action-btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .action-btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .action-btn-secondary {
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        .action-btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .creator-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .creator-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 1.5rem;
+            overflow: hidden;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .creator-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 12px;
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 2;
+        }
+
+        .creator-avatar img.error {
+            display: none !important;
+        }
+
+        .creator-avatar .avatar-fallback {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1;
+        }
+
+        /* 当图片加载成功时，隐藏后备文字 */
+        .creator-avatar:has(img.loaded) .avatar-fallback,
+        .creator-avatar img.loaded + .avatar-fallback {
+            display: none !important;
+        }
+
+        .creator-info h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 0.25rem;
+        }
+
+        .creator-info .newsletter {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .creator-details {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #eee;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .detail-label {
+            color: #666;
+            font-weight: 500;
+        }
+
+        .detail-value {
+            color: #333;
+            text-align: right;
+            max-width: 60%;
+            word-break: break-word;
+        }
+
+        .tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .tag {
+            background: #f0f0f0;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            color: #666;
+        }
+
+        .tag.primary {
+            background: #e0e7ff;
+            color: #667eea;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: white;
+            padding: 3rem;
+            font-size: 1.1rem;
+        }
+
+        .refresh-btn {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: white;
+            color: #667eea;
+            border: none;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            font-size: 1.5rem;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            transition: transform 0.2s;
+        }
+
+        .refresh-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .refresh-btn:active {
+            transform: scale(0.95);
+        }
+
+        .import-btn {
+            position: fixed;
+            bottom: 2rem;
+            right: 6rem;
+            background: white;
+            color: #667eea;
+            border: none;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            font-size: 1.2rem;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            transition: transform 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .import-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .import-btn:active {
+            transform: scale(0.95);
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .import-progress {
+            margin: 1rem 0;
+            padding: 1rem;
+            background: #f0f7ff;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .import-progress.show {
+            display: block;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        .import-result {
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .import-result.show {
+            display: block;
+        }
+
+        .import-result.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .import-result.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .import-errors {
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .import-errors ul {
+            margin: 0.5rem 0;
+            padding-left: 1.5rem;
+        }
+
+        .import-errors li {
+            margin: 0.25rem 0;
+        }
+
+        /* 模态框样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            animation: fadeIn 0.2s;
+        }
+
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            max-width: 800px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: slideUp 0.3s;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            font-size: 1.5rem;
+            color: #333;
+            margin: 0;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #666;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: background 0.2s;
+        }
+
+        .modal-close:hover {
+            background: #f0f0f0;
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .email-preview {
+            background: #f9f9f9;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            white-space: pre-wrap;
+            line-height: 1.6;
+            color: #333;
+            font-size: 0.95rem;
+        }
+
+        .email-preview.empty {
+            color: #999;
+            font-style: italic;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .email-info {
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            background: #f0f7ff;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .email-info-row {
+            display: flex;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .email-info-label {
+            font-weight: 600;
+            color: #667eea;
+            min-width: 80px;
+        }
+
+        .email-info-value {
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex: 1;
+        }
+
+        .copy-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #667eea;
+            transition: all 0.2s;
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+
+        .copy-btn:hover {
+            background: rgba(102, 126, 234, 0.1);
+            transform: scale(1.1);
+        }
+
+        .copy-btn:active {
+            transform: scale(0.95);
+        }
+
+        .copy-btn svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .copy-btn.copied {
+            color: #10b981;
+        }
+
+        .email-preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .email-preview-title {
+            font-weight: 600;
+            color: #667eea;
+            font-size: 0.9rem;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+            padding-top: 1rem;
+            border-top: 1px solid #eee;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        .success-message.show {
+            display: block;
+        }
+
+        /* 图片查看模态框样式 */
+        .image-modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(4px);
+            animation: fadeIn 0.2s;
+        }
+
+        .image-modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .image-modal-content {
+            position: relative;
+            max-width: 90vw;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .image-container {
+            position: relative;
+            max-width: 100%;
+            max-height: 80vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .image-container img {
+            max-width: 100%;
+            max-height: 80vh;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+
+        .image-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            font-size: 1.5rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            z-index: 10;
+        }
+
+        .image-nav:hover {
+            background: white;
+            transform: translateY(-50%) scale(1.1);
+        }
+
+        .image-nav.prev {
+            left: 1rem;
+        }
+
+        .image-nav.next {
+            right: 1rem;
+        }
+
+        .image-nav:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .image-nav:disabled:hover {
+            transform: translateY(-50%);
+        }
+
+        .image-close {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 1.5rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            z-index: 10;
+        }
+
+        .image-close:hover {
+            background: white;
+            transform: scale(1.1);
+        }
+
+        .image-info {
+            color: white;
+            text-align: center;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .image-counter {
+            color: rgba(255, 255, 255, 0.8);
+            margin-top: 0.5rem;
+        }
+
+        .image-loading {
+            color: white;
+            font-size: 1.2rem;
+            padding: 2rem;
+        }
+
+        @media (max-width: 768px) {
+            .creators-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .stats {
+                flex-direction: column;
+            }
+
+            .modal-content {
+                max-width: 100%;
+                margin: 1rem;
+            }
+
+            .modal-actions {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+
+            .image-nav {
+                width: 40px;
+                height: 40px;
+                font-size: 1.2rem;
+            }
+
+            .image-nav.prev {
+                left: 0.5rem;
+            }
+
+            .image-nav.next {
+                right: 0.5rem;
+            }
+
+            .import-btn {
+                right: 1rem;
+                bottom: 7rem;
+            }
+
+            .refresh-btn {
+                right: 1rem;
+                bottom: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Creator 列表</h1>
+            <p>Supabase Creator 信息管理</p>
+        </div>
+
+        <div id="stats" class="stats" style="display: none;">
+            <div class="stat-card">
+                <div class="number" id="total-count">0</div>
+                <div class="label">总 Creator 数</div>
+            </div>
+        </div>
+
+        <div id="loading" class="loading">加载中</div>
+        <div id="error" class="error" style="display: none;"></div>
+        <div id="creators-grid" class="creators-grid" style="display: none;"></div>
+        <div id="empty-state" class="empty-state" style="display: none;">
+            暂无 Creator 数据
+        </div>
+    </div>
+
+    <button class="refresh-btn" onclick="loadCreators()" title="刷新">↻</button>
+    <button class="import-btn" onclick="document.getElementById('excelFileInput').click()" title="导入 Excel">📥</button>
+    <input type="file" id="excelFileInput" class="file-input" accept=".xlsx,.xls" onchange="handleFileSelect(event)">
+
+    <!-- 图片查看模态框 -->
+    <div id="imageModal" class="image-modal">
+        <div class="image-modal-content">
+            <button class="image-close" onclick="closeImageModal()">&times;</button>
+            <div id="imageLoading" class="image-loading" style="display: none;">加载中...</div>
+            <div id="imageContainer" class="image-container" style="display: none;">
+                <button class="image-nav prev" onclick="previousImage()" id="prevBtn">‹</button>
+                <img id="modalImage" src="" alt="Magnet Image">
+                <button class="image-nav next" onclick="nextImage()" id="nextBtn">›</button>
+            </div>
+            <div id="imageInfo" class="image-info" style="display: none;">
+                <div id="imageName"></div>
+                <div class="image-counter" id="imageCounter"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 导入结果模态框 -->
+    <div id="importModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>导入 Excel</h2>
+                <button class="modal-close" onclick="closeImportModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="importProgress" class="import-progress">
+                    <div>正在上传文件...</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                </div>
+                <div id="importResult" class="import-result"></div>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" onclick="closeImportModal()">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 邮件模态框 -->
+    <div id="emailModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Message Content</h2>
+                <button class="modal-close" onclick="closeEmailModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="successMessage" class="success-message"></div>
+                <div id="emailInfo" class="email-info"></div>
+                <div id="emailPreviewContainer">
+                    <div class="email-preview-header">
+                        <span class="email-preview-title">Content</span>
+                        <button id="copyEmailBodyBtn" class="copy-btn" onclick="copyEmailBody(event)" title="复制邮件正文">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div id="emailPreview" class="email-preview empty">暂无邮件内容</div>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" onclick="closeEmailModal()">关闭</button>
+                    <button id="sendEmailBtn" class="btn btn-primary" onclick="sendEmail()">发送邮件</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function loadCreators() {
+            const loadingEl = document.getElementById('loading');
+            const errorEl = document.getElementById('error');
+            const gridEl = document.getElementById('creators-grid');
+            const emptyEl = document.getElementById('empty-state');
+            const statsEl = document.getElementById('stats');
+            const countEl = document.getElementById('total-count');
+
+            // 显示加载状态
+            loadingEl.style.display = 'block';
+            errorEl.style.display = 'none';
+            gridEl.style.display = 'none';
+            emptyEl.style.display = 'none';
+            statsEl.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/creators');
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+                }
+
+                const data = await response.json();
+                const creators = data.creators || [];
+
+                // 更新统计
+                countEl.textContent = data.count || 0;
+                statsEl.style.display = 'flex';
+
+                // 隐藏加载状态
+                loadingEl.style.display = 'none';
+
+                if (creators.length === 0) {
+                    emptyEl.style.display = 'block';
+                    return;
+                }
+
+                // 渲染 creator 卡片
+                gridEl.innerHTML = creators.map(creator => {
+                    // 优先使用 creator_signature_image_url 作为头像
+                    const imageUrl = creator.creator_signature_image_url;
+                    const fallbackText = (creator.creator_name || 'C')[0].toUpperCase();
+                    
+                    let avatar;
+                    if (imageUrl) {
+                        // 如果有图片 URL，使用 creator_signature_image_url 作为头像，失败时显示首字母
+                        const imgId = `avatar-img-${creator.creator_id || creator.id || Math.random()}`;
+                        avatar = `<img id="${imgId}" src="${imageUrl}" alt="${creator.creator_name || 'Creator'}" onload="this.classList.add('loaded'); const fallback = this.parentElement.querySelector('.avatar-fallback'); if(fallback) fallback.style.display='none';" onerror="this.classList.add('error'); this.classList.remove('loaded');">` +
+                                 `<span class="avatar-fallback">${fallbackText}</span>`;
+                    } else {
+                        // 如果没有图片 URL，直接显示首字母
+                        avatar = `<span class="avatar-fallback">${fallbackText}</span>`;
+                    }
+
+                    const formatDate = (dateStr) => {
+                        if (!dateStr) return '未知';
+                        try {
+                            const date = new Date(dateStr);
+                            return date.toLocaleDateString('zh-CN', { 
+                                year: 'numeric', 
+                                month: 'short', 
+                                day: 'numeric' 
+                            });
+                        } catch {
+                            return dateStr;
+                        }
+                    };
+
+                    const formatCurrency = (amount) => {
+                        if (!amount) return '未设置';
+                        return `$${parseFloat(amount).toFixed(2)}`;
+                    };
+
+                    const formatNumber = (num) => {
+                        if (!num) return '未知';
+                        return num.toLocaleString();
+                    };
+
+                    const tags = [
+                        ...(creator.creator_tokens_direct || []).map(t => `<span class="tag primary">${t}</span>`),
+                        ...(creator.creator_tokens_implied || []).map(t => `<span class="tag">${t}</span>`)
+                    ].join('');
+
+                    const creatorData = JSON.stringify(creator).replace(/"/g, '&quot;');
+                    
+                    // 转义 URL 中的特殊字符
+                    const escapeUrl = (url) => {
+                        if (!url) return '';
+                        return url.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                    };
+                    
+                    // 生成 Website 按钮
+                    const websiteUrl = creator.website_url;
+                    let websiteButton = '';
+                    if (websiteUrl) {
+                        const escapedUrl = escapeUrl(websiteUrl);
+                        websiteButton = `<button class="action-btn action-btn-secondary" onclick="event.stopPropagation(); window.open('${escapedUrl}', '_blank')">Website</button>`;
+                    } else {
+                        websiteButton = `<button class="action-btn action-btn-secondary" disabled style="opacity: 0.5; cursor: not-allowed;">Website</button>`;
+                    }
+                    
+                    return `
+                        <div class="creator-card">
+                            <div class="creator-header">
+                                <div class="creator-avatar">
+                                    ${avatar}
+                                </div>
+                                <div class="creator-info">
+                                    <h3>${creator.creator_name || '未知'}</h3>
+                                    <div class="newsletter">${creator.newsletter_name || '未设置'}</div>
+                                </div>
+                            </div>
+                            <div class="creator-details">
+                                <div class="detail-row">
+                                    <span class="detail-label">ID</span>
+                                    <span class="detail-value">${creator.creator_id || creator.id || '未知'}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">平台</span>
+                                    <span class="detail-value">${creator.platform || '未知'}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">分类</span>
+                                    <span class="detail-value">${(creator.content_category || []).join(', ') || '未设置'}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">邮箱</span>
+                                    <span class="detail-value">${creator.contact_email || '未设置'}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">月费</span>
+                                    <span class="detail-value">${formatCurrency(creator.paid_price_monthly_usd)}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">年费</span>
+                                    <span class="detail-value">${formatCurrency(creator.paid_price_yearly_usd)}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">付费订阅者</span>
+                                    <span class="detail-value">${formatNumber(creator.paid_subscribers_est)}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">免费订阅者</span>
+                                    <span class="detail-value">${formatNumber(creator.free_subscribers_est)}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">创建时间</span>
+                                    <span class="detail-value">${formatDate(creator.created_at)}</span>
+                                </div>
+                                ${tags ? `<div class="tags">${tags}</div>` : ''}
+                            </div>
+                            <div class="creator-actions">
+                                <button class="action-btn action-btn-secondary" onclick="event.stopPropagation(); showImageModal('${creator.creator_id || creator.id}')">Images</button>
+                                ${websiteButton}
+                                <button class="action-btn action-btn-primary" onclick="event.stopPropagation(); showEmailModal(${creatorData})">Message</button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                gridEl.style.display = 'grid';
+            } catch (error) {
+                loadingEl.style.display = 'none';
+                errorEl.textContent = `加载失败: ${error.message}`;
+                errorEl.style.display = 'block';
+            }
+        }
+
+        // 页面加载时自动获取数据
+        loadCreators();
+
+        // 当前选中的 creator 数据
+        let currentCreator = null;
+
+        // 图片查看相关变量
+        let currentImages = [];
+        let currentImageIndex = 0;
+
+        // 显示邮件模态框
+        function showEmailModal(creator) {
+            currentCreator = creator;
+            const modal = document.getElementById('emailModal');
+            const emailPreview = document.getElementById('emailPreview');
+            const emailInfo = document.getElementById('emailInfo');
+            const successMessage = document.getElementById('successMessage');
+            const sendEmailBtn = document.getElementById('sendEmailBtn');
+
+            // 隐藏成功消息
+            successMessage.classList.remove('show');
+            successMessage.textContent = '';
+
+            // 显示邮件信息
+            const email = creator.contact_email || '未设置邮箱';
+            const subject = creator.outreach_email_subject || 'Fridge Channel Magnet 合作邀请';
+            
+            // 转义HTML和JavaScript特殊字符
+            const escapeHtml = (str) => {
+                const div = document.createElement('div');
+                div.textContent = str;
+                return div.innerHTML;
+            };
+            
+            emailInfo.innerHTML = `
+                <div class="email-info-row">
+                    <span class="email-info-label">收件人：</span>
+                    <span class="email-info-value">
+                        <span>${escapeHtml(email)}</span>
+                        <button class="copy-btn" data-copy-text="${escapeHtml(email)}" onclick="copyEmailAddress(this)" title="复制邮箱地址">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                        </button>
+                    </span>
+                </div>
+                <div class="email-info-row">
+                    <span class="email-info-label">主题：</span>
+                    <span class="email-info-value">
+                        <span>${escapeHtml(subject)}</span>
+                        <button class="copy-btn" data-copy-text="${escapeHtml(subject)}" onclick="copySubject(this)" title="复制主题">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                        </button>
+                    </span>
+                </div>
+            `;
+
+            // 显示邮件内容
+            const emailBody = creator.outreach_email_body;
+            // 检查邮件是否未设置：为空、空字符串、或内容为"未设置"
+            const isEmailNotSet = !emailBody || 
+                                  emailBody.trim() === '' || 
+                                  emailBody.trim() === '未设置';
+            
+            if (emailBody && !isEmailNotSet) {
+                emailPreview.textContent = emailBody;
+                emailPreview.classList.remove('empty');
+            } else {
+                emailPreview.textContent = '暂无邮件内容';
+                emailPreview.classList.add('empty');
+            }
+
+            // 如果邮件未设置，按钮改为跳转到 website_url
+            if (isEmailNotSet) {
+                sendEmailBtn.textContent = '访问网站';
+                sendEmailBtn.onclick = function() {
+                    const websiteUrl = creator.website_url;
+                    if (websiteUrl) {
+                        window.open(websiteUrl, '_blank');
+                    } else {
+                        alert('该 Creator 没有设置网站地址');
+                    }
+                };
+                sendEmailBtn.disabled = false;
+            } else {
+                // 如果邮件已设置，使用原来的发送邮件功能
+                sendEmailBtn.textContent = '发送邮件';
+                sendEmailBtn.onclick = sendEmail;
+                
+                // 如果没有邮箱，禁用发送按钮
+                if (!creator.contact_email) {
+                    sendEmailBtn.disabled = true;
+                } else {
+                    sendEmailBtn.disabled = false;
+                }
+            }
+
+            // 显示模态框
+            modal.classList.add('show');
+        }
+
+        // 关闭邮件模态框
+        function closeEmailModal() {
+            const modal = document.getElementById('emailModal');
+            modal.classList.remove('show');
+            currentCreator = null;
+        }
+
+        // 点击模态框外部关闭
+        document.getElementById('emailModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeEmailModal();
+            }
+        });
+
+        // 复制到剪贴板
+        async function copyToClipboard(text, button) {
+            try {
+                await navigator.clipboard.writeText(text);
+                
+                // 更新按钮状态
+                const originalHTML = button.innerHTML;
+                button.classList.add('copied');
+                button.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                `;
+                
+                // 2秒后恢复
+                setTimeout(() => {
+                    button.classList.remove('copied');
+                    button.innerHTML = originalHTML;
+                }, 2000);
+            } catch (error) {
+                // 降级方案：使用传统方法
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                textArea.style.position = 'fixed';
+                textArea.style.left = '-999999px';
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    
+                    // 更新按钮状态
+                    const originalHTML = button.innerHTML;
+                    button.classList.add('copied');
+                    button.innerHTML = `
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                    `;
+                    
+                    setTimeout(() => {
+                        button.classList.remove('copied');
+                        button.innerHTML = originalHTML;
+                    }, 2000);
+                } catch (err) {
+                    alert('复制失败，请手动复制');
+                }
+                document.body.removeChild(textArea);
+            }
+        }
+
+        // 复制邮件正文
+        function copyEmailBody(event) {
+            if (!currentCreator) return;
+            const emailBody = currentCreator.outreach_email_body;
+            if (!emailBody) {
+                alert('暂无邮件内容可复制');
+                return;
+            }
+            const button = event ? event.target.closest('.copy-btn') : document.getElementById('copyEmailBodyBtn');
+            copyToClipboard(emailBody, button);
+        }
+
+        // 复制邮箱地址
+        function copyEmailAddress(button) {
+            const text = button.getAttribute('data-copy-text');
+            copyToClipboard(text, button);
+        }
+
+        // 复制主题
+        function copySubject(button) {
+            const text = button.getAttribute('data-copy-text');
+            copyToClipboard(text, button);
+        }
+
+        // 发送邮件
+        async function sendEmail() {
+            if (!currentCreator) return;
+
+            const sendEmailBtn = document.getElementById('sendEmailBtn');
+            const successMessage = document.getElementById('successMessage');
+
+            // 检查是否有邮箱和邮件内容
+            if (!currentCreator.contact_email) {
+                alert('该 Creator 没有设置邮箱地址');
+                return;
+            }
+
+            if (!currentCreator.outreach_email_body) {
+                alert('该 Creator 没有邮件内容');
+                return;
+            }
+
+            // 禁用按钮，显示加载状态
+            sendEmailBtn.disabled = true;
+            sendEmailBtn.textContent = '发送中...';
+
+            try {
+                const response = await fetch('/api/send-email', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        creator_id: currentCreator.creator_id || currentCreator.id,
+                        to_email: currentCreator.contact_email,
+                        subject: currentCreator.outreach_email_subject || 'Fridge Channel Magnet 合作邀请',
+                        body: currentCreator.outreach_email_body
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || '发送失败');
+                }
+
+                // 显示成功消息
+                successMessage.textContent = `✓ ${data.message}`;
+                successMessage.classList.add('show');
+
+                // 恢复按钮
+                sendEmailBtn.textContent = '发送邮件';
+                sendEmailBtn.disabled = false;
+
+            } catch (error) {
+                alert(`发送邮件失败: ${error.message}`);
+                sendEmailBtn.textContent = '发送邮件';
+                sendEmailBtn.disabled = false;
+            }
+        }
+
+        // 显示图片模态框
+        async function showImageModal(creatorId) {
+            const modal = document.getElementById('imageModal');
+            const imageLoading = document.getElementById('imageLoading');
+            const imageContainer = document.getElementById('imageContainer');
+            const imageInfo = document.getElementById('imageInfo');
+            const modalImage = document.getElementById('modalImage');
+
+            // 显示加载状态
+            modal.classList.add('show');
+            imageLoading.style.display = 'block';
+            imageContainer.style.display = 'none';
+            imageInfo.style.display = 'none';
+
+            try {
+                const response = await fetch(`/api/creators/${creatorId}/images`);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+                }
+
+                const data = await response.json();
+                currentImages = data.images || [];
+
+                if (currentImages.length === 0) {
+                    imageLoading.textContent = '该 Creator 暂无图片';
+                    return;
+                }
+
+                // 显示第一张图片
+                currentImageIndex = 0;
+                displayImage(currentImageIndex);
+
+            } catch (error) {
+                imageLoading.textContent = `加载失败: ${error.message}`;
+            }
+        }
+
+        // 显示指定索引的图片
+        function displayImage(index) {
+            if (currentImages.length === 0 || index < 0 || index >= currentImages.length) {
+                return;
+            }
+
+            const imageLoading = document.getElementById('imageLoading');
+            const imageContainer = document.getElementById('imageContainer');
+            const imageInfo = document.getElementById('imageInfo');
+            const modalImage = document.getElementById('modalImage');
+            const imageName = document.getElementById('imageName');
+            const imageCounter = document.getElementById('imageCounter');
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+
+            const image = currentImages[index];
+            
+            // 更新图片
+            modalImage.src = image.url;
+            modalImage.alt = image.front_name || `图片 ${index + 1}`;
+            
+            // 更新信息
+            imageName.textContent = image.front_name || `图片 ${index + 1}`;
+            imageCounter.textContent = `${index + 1} / ${currentImages.length}`;
+            
+            // 更新按钮状态
+            prevBtn.disabled = index === 0;
+            nextBtn.disabled = index === currentImages.length - 1;
+
+            // 显示容器
+            imageLoading.style.display = 'none';
+            imageContainer.style.display = 'flex';
+            imageInfo.style.display = 'block';
+        }
+
+        // 上一张图片
+        function previousImage() {
+            if (currentImageIndex > 0) {
+                currentImageIndex--;
+                displayImage(currentImageIndex);
+            }
+        }
+
+        // 下一张图片
+        function nextImage() {
+            if (currentImageIndex < currentImages.length - 1) {
+                currentImageIndex++;
+                displayImage(currentImageIndex);
+            }
+        }
+
+        // 关闭图片模态框
+        function closeImageModal() {
+            const modal = document.getElementById('imageModal');
+            modal.classList.remove('show');
+            currentImages = [];
+            currentImageIndex = 0;
+        }
+
+        // 键盘事件：左右箭头切换图片，ESC 关闭
+        document.addEventListener('keydown', function(e) {
+            const imageModal = document.getElementById('imageModal');
+            if (imageModal.classList.contains('show')) {
+                if (e.key === 'ArrowLeft') {
+                    previousImage();
+                } else if (e.key === 'ArrowRight') {
+                    nextImage();
+                } else if (e.key === 'Escape') {
+                    closeImageModal();
+                }
+            }
+        });
+
+        // 点击图片模态框外部关闭
+        document.getElementById('imageModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeImageModal();
+            }
+        });
+
+        // Excel 导入相关函数
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) {
+                return;
+            }
+
+            // 检查文件类型
+            if (!file.name.match(/\.(xlsx|xls)$/i)) {
+                alert('请选择 Excel 文件 (.xlsx 或 .xls)');
+                return;
+            }
+
+            // 显示导入模态框
+            showImportModal();
+            uploadExcelFile(file);
+        }
+
+        function showImportModal() {
+            const modal = document.getElementById('importModal');
+            const progress = document.getElementById('importProgress');
+            const result = document.getElementById('importResult');
+            
+            modal.classList.add('show');
+            progress.classList.add('show');
+            result.classList.remove('show');
+            result.className = 'import-result';
+            
+            // 重置进度条
+            document.getElementById('progressFill').style.width = '0%';
+        }
+
+        function closeImportModal() {
+            const modal = document.getElementById('importModal');
+            modal.classList.remove('show');
+            // 重置文件输入
+            document.getElementById('excelFileInput').value = '';
+        }
+
+        async function uploadExcelFile(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const progressFill = document.getElementById('progressFill');
+            const importProgress = document.getElementById('importProgress');
+            const importResult = document.getElementById('importResult');
+            let progressInterval = null;
+
+            try {
+                // 模拟进度（实际进度需要服务器支持）
+                let progress = 0;
+                progressInterval = setInterval(() => {
+                    progress += 5;
+                    if (progress <= 90) {
+                        progressFill.style.width = progress + '%';
+                    }
+                }, 300);
+
+                // 添加超时控制（5分钟）
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 300000);
+
+                let response;
+                try {
+                    response = await fetch('/api/import-creators', {
+                        method: 'POST',
+                        body: formData,
+                        signal: controller.signal
+                    });
+                    clearTimeout(timeoutId);
+                } catch (fetchError) {
+                    clearTimeout(timeoutId);
+                    if (fetchError.name === 'AbortError') {
+                        throw new Error('上传超时，请检查网络连接或文件大小');
+                    }
+                    throw fetchError;
+                }
+
+                if (progressInterval) {
+                    clearInterval(progressInterval);
+                    progressInterval = null;
+                }
+                progressFill.style.width = '100%';
+
+                // 尝试解析响应
+                let data;
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    try {
+                        data = await response.json();
+                    } catch (jsonError) {
+                        const text = await response.text();
+                        throw new Error(`服务器返回了无效的 JSON 响应: ${text.substring(0, 200)}`);
+                    }
+                } else {
+                    const text = await response.text();
+                    throw new Error(`服务器返回了非 JSON 响应: ${text.substring(0, 200)}`);
+                }
+
+                // 隐藏进度条
+                importProgress.classList.remove('show');
+
+                // 显示结果
+                if (response.ok) {
+                    importResult.className = 'import-result success show';
+                    let resultHtml = `
+                        <div style="font-weight: 600; margin-bottom: 0.5rem;">✓ ${data.message || '导入完成'}</div>
+                        <div style="font-size: 0.9rem;">
+                            <div>解析行数: ${data.total_parsed || 0}</div>
+                            <div>成功导入: ${data.total_inserted || 0}</div>
+                            <div>失败: ${data.total_failed || 0}</div>
+                        </div>
+                    `;
+                    
+                    if (data.errors && data.errors.length > 0) {
+                        resultHtml += `
+                            <div class="import-errors">
+                                <div style="font-weight: 600; margin-top: 1rem; margin-bottom: 0.5rem;">错误详情：</div>
+                                <ul>
+                                    ${data.errors.map(err => `<li>${err}</li>`).join('')}
+                                </ul>
+                            </div>
+                        `;
+                    }
+                    
+                    importResult.innerHTML = resultHtml;
+
+                    // 如果成功导入了数据，刷新列表
+                    if (data.total_inserted > 0) {
+                        setTimeout(() => {
+                            loadCreators();
+                        }, 1000);
+                    }
+                } else {
+                    importResult.className = 'import-result error show';
+                    const errorMsg = data.detail || data.message || `HTTP ${response.status}: ${response.statusText}`;
+                    importResult.innerHTML = `
+                        <div style="font-weight: 600;">✗ 导入失败</div>
+                        <div style="margin-top: 0.5rem; word-break: break-word;">${errorMsg}</div>
+                    `;
+                }
+            } catch (error) {
+                if (progressInterval) {
+                    clearInterval(progressInterval);
+                }
+                importProgress.classList.remove('show');
+                importResult.className = 'import-result error show';
+                const errorMsg = error.message || '未知错误';
+                importResult.innerHTML = `
+                    <div style="font-weight: 600;">✗ 导入失败</div>
+                    <div style="margin-top: 0.5rem; word-break: break-word;">${errorMsg}</div>
+                    <div style="margin-top: 0.5rem; font-size: 0.85rem; color: #666;">
+                        请检查：1) 网络连接是否正常 2) 文件格式是否正确 3) 服务器是否正常运行
+                    </div>
+                `;
+                console.error('导入错误:', error);
+            }
+        }
+
+        // 点击导入模态框外部关闭
+        document.getElementById('importModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeImportModal();
+            }
+        });
+    </script>
+</body>
+</html>
+

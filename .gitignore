@@ -11,9 +11,13 @@ pip-wheel-metadata/
 # Environment / secrets
 .env
 
+# Cache
+cache/
+
 # IDE
 .idea/
 .vscode/
 
 # OS
 .DS_Store
+logs/
