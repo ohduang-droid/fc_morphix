@@ -6,7 +6,8 @@
   {
     "creator_name": "...",
     "creator_url": "...",  # 对应表中的 website_url
-    "message": "..."       # 对应表中的 message 字段
+    "message": "...",      # 对应表中的 message 字段
+    "image_url": "..."     # 从 magnet_image 表获取，type=cover 的 front_image_url
   }
 ]
 按 paid_subscribers_est 倒序排序，支持设置导出数量
@@ -82,7 +83,7 @@ def get_creators_from_supabase(
     
     # 构建查询参数：选择需要的字段，按 paid_subscribers_est 降序排序
     params = {
-        "select": "creator_name,website_url,message,paid_subscribers_est",
+        "select": "creator_id,creator_name,website_url,message,paid_subscribers_est",
         "order": "paid_subscribers_est.desc.nullslast"  # 降序，null 值排在最后
     }
     
@@ -115,6 +116,78 @@ def get_creators_from_supabase(
         
     except requests.exceptions.RequestException as e:
         raise RuntimeError(f"从 Supabase 获取 creator 信息失败: {str(e)}") from e
+
+
+def get_magnet_images_by_creator_ids(
+    creator_ids: List[str],
+    supabase_url: str,
+    supabase_api_key: str
+) -> Dict[str, str]:
+    """
+    批量获取 magnet_image 表中 type=cover 的 front_image_url
+    按 creator_id 分组
+    
+    Args:
+        creator_ids: Creator ID 列表
+        supabase_url: Supabase URL
+        supabase_api_key: Supabase API Key
+    
+    Returns:
+        字典，key 为 creator_id，value 为 front_image_url（如果存在）
+    """
+    if not creator_ids:
+        return {}
+    
+    api_url = f"{supabase_url.rstrip('/')}/rest/v1/magnet_image"
+    
+    headers = {
+        "apikey": supabase_api_key,
+        "Authorization": f"Bearer {supabase_api_key}",
+        "Content-Type": "application/json"
+    }
+    
+    # 由于 Supabase 的 in 操作符限制，我们需要分批查询
+    # 每批最多 100 个 creator_id
+    batch_size = 100
+    result_dict = {}
+    
+    for i in range(0, len(creator_ids), batch_size):
+        batch_ids = creator_ids[i:i + batch_size]
+        
+        # 构建查询 URL，使用 in 操作符
+        query_url = f"{api_url}?creator_id=in.({','.join(batch_ids)})&type=eq.cover&select=creator_id,front_image_url"
+        
+        try:
+            response = requests.get(query_url, headers=headers, timeout=30)
+            response.raise_for_status()
+            
+            images = response.json()
+            
+            # 将结果转换为字典
+            for image in images:
+                creator_id = str(image.get("creator_id", ""))
+                front_image_url = image.get("front_image_url", "")
+                if creator_id and front_image_url:
+                    result_dict[creator_id] = front_image_url
+                    
+        except requests.exceptions.RequestException as e:
+            # 如果批量查询失败，尝试逐个查询
+            print(f"  警告: 批量查询 magnet_image 失败，尝试逐个查询: {str(e)}")
+            for creator_id in batch_ids:
+                try:
+                    query_url = f"{api_url}?creator_id=eq.{creator_id}&type=eq.cover&select=creator_id,front_image_url&limit=1"
+                    response = requests.get(query_url, headers=headers, timeout=10)
+                    response.raise_for_status()
+                    images = response.json()
+                    if images and len(images) > 0:
+                        front_image_url = images[0].get("front_image_url", "")
+                        if front_image_url:
+                            result_dict[str(creator_id)] = front_image_url
+                except:
+                    # 忽略单个查询失败
+                    continue
+    
+    return result_dict
 
 
 def export_creators(
@@ -161,19 +234,40 @@ def export_creators(
     
     print(f"成功获取 {len(creators)} 个 creator")
     
+    # 获取所有 creator_id，用于查询 magnet_image 表
+    creator_ids = []
+    for creator in creators:
+        creator_id = creator.get("creator_id")
+        if creator_id:
+            creator_ids.append(str(creator_id))
+    
+    # 批量获取 magnet_image 数据（type=cover）
+    print(f"正在从 magnet_image 表获取封面图片（type=cover）...")
+    image_url_map = get_magnet_images_by_creator_ids(
+        creator_ids=creator_ids,
+        supabase_url=supabase_url,
+        supabase_api_key=supabase_api_key
+    )
+    print(f"成功获取 {len(image_url_map)} 个封面图片")
+    
     # 转换为导出格式
     export_data = []
     for creator in creators:
         creator_name = creator.get("creator_name", "")
         website_url = creator.get("website_url", "")
         message = creator.get("message", "")
+        creator_id = str(creator.get("creator_id", ""))
         
         # 只导出有 creator_name 和 website_url 的记录
         if creator_name and website_url:
+            # 获取对应的 image_url
+            image_url = image_url_map.get(creator_id, "")
+            
             export_data.append({
                 "creator_name": creator_name,
                 "creator_url": website_url,
-                "message": message if message else ""
+                "message": message if message else "",
+                "image_url": image_url if image_url else ""
             })
     
     print(f"导出 {len(export_data)} 条有效记录（已过滤掉 creator_name 或 website_url 为空的记录）")

@@ -176,13 +176,24 @@ async def image_to_video(payload: ImageToVideoRequest):
 
 
 @app.get("/api/creators", response_model=CreatorResponse)
-async def get_creators():
+async def get_creators(
+    category: Optional[str] = None,
+    status: Optional[str] = None,
+    is_substack: Optional[int] = None
+):
     """
-    从 Supabase 获取所有 creator 列表
+    从 Supabase 获取 creator 列表，支持筛选
+    
+    查询参数:
+    - category: 分类筛选
+    - status: 状态筛选 (pending, generating, completed, failed)
+    - is_substack: 是否发送筛选 (0=未发送, 1=已发送)
     
     修复：使用线程池执行同步操作，避免阻塞事件循环
     """
     try:
+        # 记录接收到的参数
+        logger.info(f"接收到的查询参数: category={category}, status={status}, is_substack={is_substack} (type: {type(is_substack)})")
         supabase_url = os.getenv("SUPABASE_URL")
         supabase_api_key = os.getenv("SUPABASE_API_KEY")
         
@@ -192,41 +203,112 @@ async def get_creators():
                 detail="缺少 Supabase 配置（SUPABASE_URL 或 SUPABASE_API_KEY 环境变量）"
             )
         
-        # 在线程池中执行同步操作，避免阻塞事件循环
-        loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(
-            None,
-            lambda: step_one.execute(
-                supabase_url=supabase_url,
-                supabase_api_key=supabase_api_key,
-                use_cache=False  # 实时从数据库获取，不使用缓存
-            )
-        )
+        # 构建 Supabase 查询 URL
+        api_url = f"{supabase_url.rstrip('/')}/rest/v1/creator"
+        query_params = []
         
-        creators = result.get("creators", [])
+        # 添加筛选条件
+        if status:
+            query_params.append(f"status=eq.{status}")
         
-        # 统计各状态的数量
-        stats = {
-            "pending": 0,      # 待生成
-            "completed": 0,    # 已完成
-            "failed": 0        # 失败
+        # 处理 is_substack 筛选（int 类型，只有 0 和 1）
+        if is_substack is not None:
+            # 确保是整数类型
+            is_substack_value = int(is_substack)
+            query_params.append(f"is_substack=eq.{is_substack_value}")
+            logger.info(f"添加 is_substack 筛选条件: is_substack=eq.{is_substack_value}")
+        
+        # 构建完整 URL
+        if query_params:
+            api_url += "?" + "&".join(query_params)
+        
+        logger.info(f"查询参数: category={category}, status={status}, is_substack={is_substack}")
+        logger.info(f"查询 URL: {api_url}")
+        
+        headers = {
+            "apikey": supabase_api_key,
+            "Authorization": f"Bearer {supabase_api_key}",
+            "Content-Type": "application/json"
         }
         
-        for creator in creators:
-            status = creator.get("status", "pending")  # 默认为 pending
-            if status == "completed":
+        # 在线程池中执行同步操作，避免阻塞事件循环
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(
+            None,
+            lambda: requests.get(api_url, headers=headers, timeout=30)
+        )
+        response.raise_for_status()
+        
+        creators: List[Dict[str, Any]] = response.json()
+        logger.info(f"查询结果数量: {len(creators)}, 筛选条件: is_substack={is_substack}")
+        
+        # 调试：检查前几条数据的 is_substack 值
+        if creators and len(creators) > 0:
+            sample_is_substack = [c.get('is_substack') for c in creators[:5]]
+            logger.info(f"前5条数据的 is_substack 值: {sample_is_substack}")
+        
+        # 如果有分类筛选，在前端过滤（因为 Supabase 数组包含查询比较复杂）
+        if category:
+            filtered_creators = []
+            for creator in creators:
+                categories = creator.get("content_category", [])
+                if isinstance(categories, list) and category in categories:
+                    filtered_creators.append(creator)
+            creators = filtered_creators
+        
+        # 按 paid_subscribers_est 和 free_subscribers_est 降序排序
+        def get_sort_key(creator: Dict[str, Any]) -> tuple:
+            paid_subscribers = creator.get("paid_subscribers_est")
+            try:
+                paid_value = float(paid_subscribers) if paid_subscribers is not None else 0.0
+            except (ValueError, TypeError):
+                paid_value = 0.0
+            
+            free_subscribers = creator.get("free_subscribers_est")
+            try:
+                free_value = float(free_subscribers) if free_subscribers is not None else 0.0
+            except (ValueError, TypeError):
+                free_value = 0.0
+            
+            return (-paid_value, -free_value)
+        
+        creators.sort(key=get_sort_key)
+        
+        # 统计各状态的数量（从所有数据统计，不受筛选影响）
+        # 为了获取准确的统计，需要查询所有数据
+        stats_api_url = f"{supabase_url.rstrip('/')}/rest/v1/creator"
+        stats_response = await loop.run_in_executor(
+            None,
+            lambda: requests.get(stats_api_url, headers=headers, timeout=30)
+        )
+        stats_response.raise_for_status()
+        all_creators = stats_response.json()
+        
+        stats = {
+            "pending": 0,
+            "completed": 0,
+            "failed": 0
+        }
+        
+        for creator in all_creators:
+            creator_status = creator.get("status", "pending")
+            if creator_status == "completed":
                 stats["completed"] += 1
-            elif status == "failed":
+            elif creator_status == "failed":
                 stats["failed"] += 1
             else:
-                # pending, generating 或其他状态都算作 pending
                 stats["pending"] += 1
         
         return CreatorResponse(
             creators=creators,
-            count=result.get("count", 0),
+            count=len(creators),
             stats=stats
         )
+    except requests.exceptions.RequestException as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"从 Supabase 获取数据失败: {str(e)}"
+        ) from e
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
@@ -535,6 +617,85 @@ async def generate_creator(creator_id: str):
         if os.getenv("DEBUG", "false").lower() == "true":
             error_detail += f"\n{traceback.format_exc()}"
         raise HTTPException(status_code=500, detail=error_detail) from exc
+
+
+class UpdateIsSubstackRequest(BaseModel):
+    is_substack: int  # 0 或 1
+
+
+@app.patch("/api/creators/{creator_id}/is_substack")
+async def update_is_substack(creator_id: str, payload: UpdateIsSubstackRequest):
+    """
+    更新 Creator 的 is_substack 状态
+    is_substack: 0 表示未发送，1 表示已发送
+    """
+    try:
+        supabase_url = os.getenv("SUPABASE_URL")
+        supabase_api_key = os.getenv("SUPABASE_API_KEY")
+        
+        if not supabase_url or not supabase_api_key:
+            raise HTTPException(
+                status_code=500,
+                detail="缺少 Supabase 配置（SUPABASE_URL 或 SUPABASE_API_KEY 环境变量）"
+            )
+        
+        # 验证 is_substack 值
+        if payload.is_substack not in [0, 1]:
+            raise HTTPException(
+                status_code=400,
+                detail="is_substack 必须是 0 或 1"
+            )
+        
+        # 构建更新 URL
+        api_url = f"{supabase_url.rstrip('/')}/rest/v1/creator"
+        update_url = f"{api_url}?creator_id=eq.{creator_id}"
+        
+        headers = {
+            "apikey": supabase_api_key,
+            "Authorization": f"Bearer {supabase_api_key}",
+            "Content-Type": "application/json",
+            "Prefer": "return=representation"
+        }
+        
+        # 更新 is_substack 字段
+        update_data = {
+            "is_substack": payload.is_substack
+        }
+        
+        # 在线程池中执行同步操作
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(
+            None,
+            lambda: requests.patch(update_url, headers=headers, json=update_data, timeout=30)
+        )
+        
+        response.raise_for_status()
+        
+        logger.info(f"Creator {creator_id} 的 is_substack 已更新为 {payload.is_substack}")
+        
+        return {
+            "status": "success",
+            "message": f"is_substack 已更新为 {payload.is_substack}",
+            "creator_id": creator_id,
+            "is_substack": payload.is_substack
+        }
+        
+    except requests.exceptions.RequestException as e:
+        error_detail = str(e)
+        if hasattr(e, 'response') and e.response is not None:
+            try:
+                error_body = e.response.json()
+                error_detail = f"HTTP {e.response.status_code}: {error_body}"
+            except:
+                error_detail = f"HTTP {e.response.status_code}: {e.response.text[:200]}"
+        raise HTTPException(
+            status_code=500,
+            detail=f"更新 is_substack 失败: {error_detail}"
+        ) from e
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 @app.get("/", response_class=HTMLResponse)

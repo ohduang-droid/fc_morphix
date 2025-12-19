@@ -58,6 +58,10 @@ class TaskExecutor:
                 print(f"开始执行第一步：从 Supabase 获取 creator 信息 (creator_id: {creator_id})...")
             else:
                 print("开始执行第一步：从 Supabase 获取 creator 信息...")
+            # 确保 use_cache 参数被正确传递
+            use_cache = kwargs.get("use_cache", True)
+            if not use_cache:
+                print(f"  ℹ️  禁用缓存模式：use_cache={use_cache}")
             step_one_result = step_one.execute(**kwargs)
             self.step_results["step_one"] = step_one_result
             print(f"第一步完成: {step_one_result['message']}")
@@ -148,6 +152,10 @@ class TaskExecutor:
                     creator_kwargs = kwargs.copy()
                     creator_kwargs["creators"] = [creator]  # 只包含当前Creator
                     creator_kwargs["step_one_result"] = step_one_result
+                    # 确保 use_cache 参数被正确传递
+                    use_cache = creator_kwargs.get("use_cache", True)
+                    if not use_cache:
+                        print(f"[Creator {creator_idx}] ℹ️  禁用缓存模式：use_cache={use_cache}")
                     
                     # 第二步：为当前Creator调用 Dify 接口生成 prompt，并写入 Supabase
                     print(f"\n[Creator {creator_idx}] 开始执行第二步：调用 Dify 接口生成 prompt...")

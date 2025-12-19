@@ -2,6 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Creator 列表 - FC Morphix</title>
     <style>
@@ -12,7 +13,7 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', 'Microsoft YaHei', '微软雅黑', 'SimHei', '黑体', sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             padding: 2rem;
@@ -85,6 +86,56 @@
             0%, 20% { content: '.'; }
             40% { content: '..'; }
             60%, 100% { content: '...'; }
+        }
+
+        /* 遮罩层 loading */
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(2px);
+        }
+
+        .loading-overlay.show {
+            display: flex;
+        }
+
+        .loading-overlay-content {
+            background: white;
+            padding: 2rem 3rem;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .loading-overlay-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-overlay-text {
+            font-size: 1.1rem;
+            color: #333;
+            font-weight: 600;
         }
 
         .error {
@@ -1069,10 +1120,179 @@
                 min-width: 32px;
                 height: 32px;
             }
+
+        /* 登录界面样式 */
+        .login-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            z-index: 10000;
+            padding: 2rem;
+            box-sizing: border-box;
+        }
+
+        .login-box {
+            background: white;
+            padding: 3rem;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 400px;
+            box-sizing: border-box;
+        }
+
+        .login-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #333;
+            text-align: center;
+            margin: 0 0 0.5rem 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Microsoft YaHei', '微软雅黑', 'SimHei', '黑体', sans-serif;
+            line-height: 1.2;
+        }
+
+        .login-subtitle {
+            font-size: 1rem;
+            color: #666;
+            text-align: center;
+            margin: 0 0 2rem 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Microsoft YaHei', '微软雅黑', 'SimHei', '黑体', sans-serif;
+            line-height: 1.5;
+        }
+
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            margin: 0;
+            padding: 0;
+        }
+
+        .login-input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin: 0;
+            padding: 0;
+        }
+
+        .login-label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Microsoft YaHei', '微软雅黑', 'SimHei', '黑体', sans-serif;
+            line-height: 1.4;
+        }
+
+        .login-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.2s;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Microsoft YaHei', '微软雅黑', 'SimHei', '黑体', sans-serif;
+            box-sizing: border-box;
+            margin: 0;
+        }
+
+        .login-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Microsoft YaHei', '微软雅黑', 'SimHei', '黑体', sans-serif;
+            margin: 0;
+        }
+
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .login-btn:active {
+            transform: translateY(0);
+        }
+
+        .login-error {
+            background: #fee;
+            color: #c33;
+            padding: 0.75rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            text-align: center;
+            display: none;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Microsoft YaHei', '微软雅黑', 'SimHei', '黑体', sans-serif;
+            margin: 0;
+            line-height: 1.4;
+        }
+
+        .login-error.show {
+            display: block;
+        }
+
+        .main-content {
+            display: none;
+        }
+
+        .main-content.authenticated {
+            display: block;
+        }
+
+        /* 当显示登录界面时，隐藏 body 的 padding */
+        body:has(.login-container[style*="flex"]) {
+            padding: 0;
         }
     </style>
 </head>
 <body>
+    <!-- 登录界面 -->
+    <div id="loginContainer" class="login-container">
+        <div class="login-box">
+            <h1 class="login-title">FC Morphix</h1>
+            <p class="login-subtitle">Creator 信息管理系统</p>
+            <form class="login-form" onsubmit="handleLogin(event)">
+                <div class="login-input-group">
+                    <label class="login-label" for="passwordInput">访问密码</label>
+                    <input 
+                        type="password" 
+                        id="passwordInput" 
+                        class="login-input" 
+                        placeholder="请输入访问密码"
+                        required
+                        autocomplete="off"
+                    >
+                </div>
+                <div id="loginError" class="login-error"></div>
+                <button type="submit" class="login-btn">登录</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 主内容区域 -->
+    <div id="mainContent" class="main-content">
     <div class="container">
         <div class="header">
             <h1>Creator 列表</h1>
@@ -1113,9 +1333,16 @@
                     <option value="failed">失败</option>
                 </select>
             </div>
+            <div class="filter-group">
+                <select id="isSubstackFilter" class="filter-select">
+                    <option value="">全部</option>
+                    <option value="1">已发送</option>
+                    <option value="0">未发送</option>
+                </select>
+            </div>
             <div class="filter-actions">
                 <button class="filter-btn filter-btn-clear" onclick="clearFilters()">清除</button>
-                <button class="filter-btn filter-btn-apply" onclick="applyFilters()">应用筛选</button>
+                <button class="filter-btn filter-btn-apply" type="button" onclick="applyFilters()">应用筛选</button>
             </div>
         </div>
 
@@ -1128,7 +1355,7 @@
         </div>
     </div>
 
-    <button class="refresh-btn" onclick="loadCreators()" title="刷新">↻</button>
+    <button class="refresh-btn" onclick="loadCreators(true)" title="刷新">↻</button>
     <button class="import-btn" onclick="document.getElementById('excelFileInput').click()" title="导入 Excel">📥</button>
     <button class="import-json-btn" onclick="importFromJson()" title="从内部 JSON 文件导入" style="display: none;">📄</button>
     <input type="file" id="excelFileInput" class="file-input" accept=".xlsx,.xls" onchange="handleFileSelect(event)">
@@ -1212,7 +1439,106 @@
         </div>
     </div>
 
+    <!-- 遮罩层 loading -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-overlay-content">
+            <div class="loading-overlay-spinner"></div>
+            <div class="loading-overlay-text" id="loadingOverlayText">加载中...            </div>
+        </div>
+    </div>
+    </div>
+    <!-- 主内容区域结束 -->
+
     <script>
+        // 密码配置
+        const ACCESS_PASSWORD = 'Nkdh9338*%S';
+        const SESSION_KEY = 'fc_morphix_authenticated';
+        const SESSION_TIMEOUT = 24 * 60 * 60 * 1000; // 24小时
+
+        // 检查登录状态
+        function checkAuthentication() {
+            const authData = sessionStorage.getItem(SESSION_KEY);
+            if (!authData) {
+                return false;
+            }
+
+            try {
+                const { timestamp } = JSON.parse(authData);
+                const now = Date.now();
+                
+                // 检查是否超时
+                if (now - timestamp > SESSION_TIMEOUT) {
+                    sessionStorage.removeItem(SESSION_KEY);
+                    return false;
+                }
+                
+                return true;
+            } catch (e) {
+                sessionStorage.removeItem(SESSION_KEY);
+                return false;
+            }
+        }
+
+        // 保存登录状态
+        function saveAuthentication() {
+            const authData = {
+                timestamp: Date.now()
+            };
+            sessionStorage.setItem(SESSION_KEY, JSON.stringify(authData));
+        }
+
+        // 处理登录
+        function handleLogin(event) {
+            event.preventDefault();
+            
+            const passwordInput = document.getElementById('passwordInput');
+            const errorDiv = document.getElementById('loginError');
+            const password = passwordInput.value;
+
+            // 隐藏错误信息
+            errorDiv.classList.remove('show');
+            errorDiv.textContent = '';
+
+            // 验证密码
+            if (password === ACCESS_PASSWORD) {
+                // 保存登录状态
+                saveAuthentication();
+                
+                // 隐藏登录界面，显示主内容
+                document.getElementById('loginContainer').style.display = 'none';
+                document.getElementById('mainContent').classList.add('authenticated');
+                
+                // 清空密码输入框
+                passwordInput.value = '';
+                
+                // 加载数据
+                loadCreators();
+            } else {
+                // 显示错误信息
+                errorDiv.textContent = '密码错误，请重新输入';
+                errorDiv.classList.add('show');
+                passwordInput.value = '';
+                passwordInput.focus();
+            }
+        }
+
+        // 页面加载时检查登录状态
+        window.addEventListener('DOMContentLoaded', function() {
+            if (checkAuthentication()) {
+                // 已登录，显示主内容
+                document.getElementById('loginContainer').style.display = 'none';
+                document.getElementById('mainContent').classList.add('authenticated');
+                // 加载数据
+                loadCreators();
+            } else {
+                // 未登录，显示登录界面
+                document.getElementById('loginContainer').style.display = 'flex';
+                document.getElementById('mainContent').classList.remove('authenticated');
+                // 聚焦密码输入框
+                document.getElementById('passwordInput').focus();
+            }
+        });
+
         // 分页相关变量
         let allCreators = [];
         let filteredCreators = [];
@@ -1222,8 +1548,27 @@
         // 筛选相关变量
         let currentCategoryFilter = '';
         let currentStatusFilter = '';
+        let currentIsSubstackFilter = '';
 
-        async function loadCreators() {
+        // 显示遮罩层 loading
+        function showLoadingOverlay(text = '加载中...') {
+            const overlay = document.getElementById('loadingOverlay');
+            const textEl = document.getElementById('loadingOverlayText');
+            if (overlay && textEl) {
+                textEl.textContent = text;
+                overlay.classList.add('show');
+            }
+        }
+
+        // 隐藏遮罩层 loading
+        function hideLoadingOverlay() {
+            const overlay = document.getElementById('loadingOverlay');
+            if (overlay) {
+                overlay.classList.remove('show');
+            }
+        }
+
+        async function loadCreators(isFiltering = false) {
             const loadingEl = document.getElementById('loading');
             const errorEl = document.getElementById('error');
             const gridEl = document.getElementById('creators-grid');
@@ -1233,23 +1578,51 @@
             const paginationEl = document.getElementById('pagination');
             const filtersEl = document.getElementById('filters');
 
-            // 显示加载状态
-            loadingEl.style.display = 'block';
-            errorEl.style.display = 'none';
-            gridEl.style.display = 'none';
-            emptyEl.style.display = 'none';
-            statsEl.style.display = 'none';
-            paginationEl.style.display = 'none';
-            filtersEl.style.display = 'none';
+            // 如果是筛选操作，只显示遮罩层，不隐藏内容
+            // 如果是初始加载，隐藏内容并显示 loading
+            if (isFiltering) {
+                // 筛选时只显示遮罩层，保持内容可见
+                showLoadingOverlay('筛选中...');
+            } else {
+                // 初始加载时隐藏内容
+                loadingEl.style.display = 'block';
+                errorEl.style.display = 'none';
+                gridEl.style.display = 'none';
+                emptyEl.style.display = 'none';
+                statsEl.style.display = 'none';
+                paginationEl.style.display = 'none';
+                filtersEl.style.display = 'none';
+            }
 
             try {
-                const response = await fetch('/api/creators');
+                // 获取当前筛选条件
+                const categoryFilter = document.getElementById('categoryFilter');
+                const statusFilter = document.getElementById('statusFilter');
+                const isSubstackFilter = document.getElementById('isSubstackFilter');
+                
+                // 构建查询参数
+                const params = new URLSearchParams();
+                if (statusFilter && statusFilter.value) {
+                    params.append('status', statusFilter.value);
+                }
+                if (isSubstackFilter && isSubstackFilter.value !== '') {
+                    params.append('is_substack', isSubstackFilter.value);
+                }
+                if (categoryFilter && categoryFilter.value) {
+                    params.append('category', categoryFilter.value);
+                }
+                
+                const queryString = params.toString();
+                const url = queryString ? `/api/creators?${queryString}` : '/api/creators';
+                
+                const response = await fetch(url);
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${await response.text()}`);
                 }
 
                 const data = await response.json();
                 allCreators = data.creators || [];
+                filteredCreators = allCreators; // 后端已经筛选过了
 
                 // 更新统计
                 countEl.textContent = data.count || 0;
@@ -1262,96 +1635,123 @@
                 
                 statsEl.style.display = 'flex';
 
-                // 初始化筛选器
-                initializeFilters();
+                // 初始化筛选器（只在第一次加载时初始化分类列表）
+                const categoryFilterEl = document.getElementById('categoryFilter');
+                if (!categoryFilterEl || categoryFilterEl.options.length <= 1) {
+                    await initializeFilters();
+                }
                 filtersEl.style.display = 'flex';
 
                 // 隐藏加载状态
-                loadingEl.style.display = 'none';
+                if (!isFiltering) {
+                    loadingEl.style.display = 'none';
+                }
+                
+                // 隐藏遮罩层（如果是筛选操作）
+                if (isFiltering) {
+                    hideLoadingOverlay();
+                }
 
                 if (allCreators.length === 0) {
                     emptyEl.style.display = 'block';
-                    return;
+                    gridEl.style.display = 'none';
+                } else {
+                    // 重置到第一页并渲染
+                    currentPage = 1;
+                    renderPage(currentPage);
                 }
-
-                // 应用当前筛选并重置到第一页
-                applyFilters();
             } catch (error) {
-                loadingEl.style.display = 'none';
+                // 隐藏遮罩层
+                if (isFiltering) {
+                    hideLoadingOverlay();
+                } else {
+                    loadingEl.style.display = 'none';
+                }
                 errorEl.textContent = `加载失败: ${error.message}`;
                 errorEl.style.display = 'block';
             }
         }
 
-        // 初始化筛选器
-        function initializeFilters() {
+        // 初始化筛选器（需要从服务器获取所有分类）
+        async function initializeFilters() {
             const categoryFilter = document.getElementById('categoryFilter');
             
-            // 收集所有唯一的分类
-            const categories = new Set();
-            allCreators.forEach(creator => {
-                const categories_list = creator.content_category || [];
-                if (Array.isArray(categories_list)) {
-                    categories_list.forEach(cat => {
-                        if (cat && cat.trim()) {
-                            categories.add(cat.trim());
+            try {
+                // 获取所有数据以收集分类列表（不应用筛选）
+                const response = await fetch('/api/creators');
+                if (response.ok) {
+                    const data = await response.json();
+                    const allCreatorsForCategories = data.creators || [];
+                    
+                    // 收集所有唯一的分类
+                    const categories = new Set();
+                    allCreatorsForCategories.forEach(creator => {
+                        const categories_list = creator.content_category || [];
+                        if (Array.isArray(categories_list)) {
+                            categories_list.forEach(cat => {
+                                if (cat && cat.trim()) {
+                                    categories.add(cat.trim());
+                                }
+                            });
                         }
                     });
+                    
+                    // 清空现有选项（保留"全部"）
+                    if (categoryFilter) {
+                        categoryFilter.innerHTML = '<option value="">全部</option>';
+                        
+                        // 按字母顺序排序并添加选项
+                        Array.from(categories).sort().forEach(cat => {
+                            const option = document.createElement('option');
+                            option.value = cat;
+                            option.textContent = cat;
+                            categoryFilter.appendChild(option);
+                        });
+                    }
                 }
-            });
-            
-            // 清空现有选项（保留"全部"）
-            categoryFilter.innerHTML = '<option value="">全部</option>';
-            
-            // 按字母顺序排序并添加选项
-            Array.from(categories).sort().forEach(cat => {
-                const option = document.createElement('option');
-                option.value = cat;
-                option.textContent = cat;
-                categoryFilter.appendChild(option);
-            });
+            } catch (error) {
+                console.error('初始化筛选器失败:', error);
+            }
         }
 
-        // 应用筛选
-        function applyFilters() {
-            const categoryFilter = document.getElementById('categoryFilter');
-            const statusFilter = document.getElementById('statusFilter');
-            
-            currentCategoryFilter = categoryFilter.value || '';
-            currentStatusFilter = statusFilter.value || '';
-            
-            // 筛选数据
-            filteredCreators = allCreators.filter(creator => {
-                // 分类筛选
-                if (currentCategoryFilter) {
-                    const categories = creator.content_category || [];
-                    if (!Array.isArray(categories) || !categories.includes(currentCategoryFilter)) {
-                        return false;
-                    }
+        // 应用筛选（重新从服务器加载数据）
+        async function applyFilters() {
+            console.log('applyFilters 被调用');
+            try {
+                // 保存当前筛选条件
+                const categoryFilter = document.getElementById('categoryFilter');
+                const statusFilter = document.getElementById('statusFilter');
+                const isSubstackFilter = document.getElementById('isSubstackFilter');
+                
+                if (!categoryFilter || !statusFilter || !isSubstackFilter) {
+                    console.error('筛选器元素未找到');
+                    return;
                 }
                 
-                // 状态筛选
-                if (currentStatusFilter) {
-                    const status = creator.status || 'pending';
-                    if (status !== currentStatusFilter) {
-                        return false;
-                    }
-                }
+                currentCategoryFilter = categoryFilter.value || '';
+                currentStatusFilter = statusFilter.value || '';
+                currentIsSubstackFilter = isSubstackFilter.value || '';
                 
-                return true;
-            });
-            
-            // 重置到第一页并渲染
-            currentPage = 1;
-            renderPage(currentPage);
+                console.log('筛选条件:', { currentCategoryFilter, currentStatusFilter, currentIsSubstackFilter });
+                
+                // 重新从服务器加载数据（应用筛选条件），传入 isFiltering=true
+                await loadCreators(true);
+            } catch (error) {
+                console.error('应用筛选时出错:', error);
+                hideLoadingOverlay();
+                alert('筛选失败: ' + error.message);
+            }
         }
 
         // 清除筛选
         function clearFilters() {
+            console.log('clearFilters 被调用');
             document.getElementById('categoryFilter').value = '';
             document.getElementById('statusFilter').value = '';
+            document.getElementById('isSubstackFilter').value = '';
             currentCategoryFilter = '';
             currentStatusFilter = '';
+            currentIsSubstackFilter = '';
             applyFilters();
         }
 
@@ -1456,6 +1856,17 @@
                         websiteButton = `<button class="action-btn action-btn-secondary" disabled style="opacity: 0.5; cursor: not-allowed;">Website</button>`;
                     }
                     
+                    // 生成 pizesiz 按钮
+                    const handle = creator.handle;
+                    let pizesizButton = '';
+                    if (handle) {
+                        const pizesizUrl = `https://FridgeChannels.com/${handle}`;
+                        const escapedPizesizUrl = escapeUrl(pizesizUrl);
+                        pizesizButton = `<button class="action-btn action-btn-secondary" onclick="event.stopPropagation(); window.open('${escapedPizesizUrl}', '_blank')">Pitch Site</button>`;
+                    } else {
+                        pizesizButton = `<button class="action-btn action-btn-secondary" disabled style="opacity: 0.5; cursor: not-allowed;">Pitch Site</button>`;
+                    }
+                    
                     return `
                         <div class="creator-card">
                             <div class="creator-header">
@@ -1507,14 +1918,20 @@
                                     <span class="detail-label">创建时间</span>
                                     <span class="detail-value">${formatDate(creator.created_at)}</span>
                                 </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">已发送</span>
+                                    <span class="detail-value">${creator.is_substack === 1 ? '是' : '否'}</span>
+                                </div>
                                 ${tags ? `<div class="tags">${tags}</div>` : ''}
                             </div>
                             <div class="creator-actions">
                                 <button class="action-btn action-btn-secondary" onclick="event.stopPropagation(); showImageModal('${creator.creator_id || creator.id}')">Images</button>
                                 ${websiteButton}
+                                ${pizesizButton}
                                 <button class="action-btn action-btn-secondary" onclick="event.stopPropagation(); generateCreator('${creator.creator_id || creator.id}', this)">生成</button>
                                 <button class="action-btn action-btn-primary" onclick="event.stopPropagation(); showEmailModal(${creatorData})">Message</button>
                                 <button class="action-btn action-btn-secondary" onclick="event.stopPropagation(); copyMessageFromCard(${creatorData}, this)" title="复制 Message">复制</button>
+                                <button class="action-btn ${creator.is_substack === 1 ? 'action-btn-primary' : 'action-btn-secondary'}" onclick="event.stopPropagation(); toggleIsSubstack('${creator.creator_id || creator.id}', ${creator.is_substack || 0}, this)" title="切换已发送状态">${creator.is_substack === 1 ? '已发送' : '未发送'}</button>
                             </div>
                         </div>
                     `;
@@ -1633,8 +2050,7 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        // 页面加载时自动获取数据
-        loadCreators();
+        // 页面加载时自动获取数据（已在登录检查后调用）
 
         // 当前选中的 creator 数据
         let currentCreator = null;
@@ -1934,6 +2350,9 @@
                 return;
             }
 
+            // 显示遮罩层
+            showLoadingOverlay('发送邮件中...');
+
             // 禁用按钮，显示加载状态
             sendEmailBtn.disabled = true;
             sendEmailBtn.textContent = '发送中...';
@@ -1970,6 +2389,8 @@
                 alert(`发送邮件失败: ${error.message}`);
                 sendEmailBtn.textContent = '发送邮件';
                 sendEmailBtn.disabled = false;
+            } finally {
+                hideLoadingOverlay();
             }
         }
 
@@ -2219,8 +2640,12 @@
 
                     // 如果成功导入了数据，刷新列表
                     if (data.total_inserted > 0) {
-                        setTimeout(() => {
-                            loadCreators();
+                        setTimeout(async () => {
+                            try {
+                                await loadCreators(true);
+                            } catch (err) {
+                                console.error('刷新列表失败:', err);
+                            }
                         }, 1000);
                     }
                 } else {
@@ -2268,6 +2693,9 @@
                 return;
             }
 
+            // 显示遮罩层
+            showLoadingOverlay('生成中，请稍候...');
+
             // 保存原始按钮文本和状态
             const originalText = buttonElement.textContent;
             const originalDisabled = buttonElement.disabled;
@@ -2312,14 +2740,19 @@
 
                 if (response.ok) {
                     alert(`✓ ${data.message || '生成完成'}`);
-                    // 刷新列表以更新状态
-                    setTimeout(() => {
-                        loadCreators();
+                    // 刷新列表以更新状态（使用筛选模式，不隐藏内容）
+                    setTimeout(async () => {
+                        try {
+                            await loadCreators(true);
+                        } catch (err) {
+                            console.error('刷新列表失败:', err);
+                        }
                     }, 1000);
                 } else {
                     throw new Error(data.detail || data.message || '生成失败');
                 }
             } catch (error) {
+                hideLoadingOverlay();
                 alert(`生成失败: ${error.message}\n\n如果任务正在执行，请稍后刷新页面查看状态。`);
                 console.error('生成错误:', error);
             } finally {
@@ -2327,6 +2760,85 @@
                 buttonElement.disabled = originalDisabled;
                 buttonElement.textContent = originalText;
                 buttonElement.className = originalClass;
+                hideLoadingOverlay();
+            }
+        }
+
+        // 切换 is_substack 状态
+        async function toggleIsSubstack(creatorId, currentValue, buttonElement) {
+            if (!creatorId) {
+                alert('Creator ID 无效');
+                return;
+            }
+
+            // 计算新值：0 变 1，1 变 0
+            const newValue = currentValue === 1 ? 0 : 1;
+            const newStatusText = newValue === 1 ? '已发送' : '未发送';
+
+            // 如果当前是"已发送"状态，要改为"未发送"，需要二次确认
+            if (currentValue === 1 && newValue === 0) {
+                const confirmed = confirm(`确定要将 Creator ${creatorId} 的状态从"已发送"改为"未发送"吗？\n\n此操作将标记该 Creator 为未发送状态。`);
+                if (!confirmed) {
+                    return; // 用户取消操作
+                }
+            }
+
+            // 显示遮罩层
+            showLoadingOverlay('更新中...');
+
+            // 保存原始按钮状态
+            const originalText = buttonElement.textContent;
+            const originalClass = buttonElement.className;
+            const originalDisabled = buttonElement.disabled;
+
+            // 更新按钮状态（显示加载）
+            buttonElement.disabled = true;
+            buttonElement.textContent = '更新中...';
+
+            try {
+                const response = await fetch(`/api/creators/${creatorId}/is_substack`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        is_substack: newValue
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ detail: '更新失败' }));
+                    throw new Error(errorData.detail || `HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                // 更新按钮状态
+                buttonElement.textContent = newStatusText;
+                buttonElement.classList.remove('action-btn-primary', 'action-btn-secondary');
+                if (newValue === 1) {
+                    buttonElement.classList.add('action-btn-primary');
+                } else {
+                    buttonElement.classList.add('action-btn-secondary');
+                }
+
+                // 刷新列表以更新显示（使用筛选模式，不隐藏内容）
+                setTimeout(async () => {
+                    try {
+                        await loadCreators(true);
+                    } catch (err) {
+                        console.error('刷新列表失败:', err);
+                    }
+                }, 500);
+
+            } catch (error) {
+                hideLoadingOverlay();
+                alert(`更新失败: ${error.message}`);
+                // 恢复按钮状态
+                buttonElement.textContent = originalText;
+                buttonElement.className = originalClass;
+                buttonElement.disabled = originalDisabled;
+                console.error('更新 is_substack 错误:', error);
             }
         }
 
@@ -2424,8 +2936,12 @@
 
                     // 如果成功导入了数据，刷新列表
                     if (data.total_inserted > 0) {
-                        setTimeout(() => {
-                            loadCreators();
+                        setTimeout(async () => {
+                            try {
+                                await loadCreators(true);
+                            } catch (err) {
+                                console.error('刷新列表失败:', err);
+                            }
                         }, 1000);
                     }
                 } else {

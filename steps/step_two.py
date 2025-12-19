@@ -559,6 +559,8 @@ def execute(**kwargs) -> Dict[str, Any]:
     supabase_url = kwargs.get("supabase_url") or os.getenv("SUPABASE_URL")
     supabase_api_key = kwargs.get("supabase_api_key") or os.getenv("SUPABASE_API_KEY")
     use_cache = kwargs.get("use_cache", True)  # 默认使用缓存
+    if not use_cache:
+        print("  ℹ️  禁用缓存模式：将重新调用 Dify API 生成 prompt")
     
     # 为每个 creator 调用 Dify API 并写入 Supabase
     results = []

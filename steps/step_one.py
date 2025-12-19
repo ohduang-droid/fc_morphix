@@ -38,6 +38,8 @@ def execute(**kwargs) -> Dict[str, Any]:
     
     # 检查缓存（第一步缓存所有 creator 列表，使用特殊标识 "all_creators"）
     use_cache = kwargs.get("use_cache", True)
+    if not use_cache:
+        print("  ℹ️  禁用缓存模式：将从数据库重新获取 creator 信息")
     if use_cache:
         cached_result = load_cache("all_creators", "step_one")
         if cached_result:

@@ -482,6 +482,8 @@ def execute(**kwargs) -> Dict[str, Any]:
     
     if use_cache:
         print("  ℹ️  第四步使用缓存（场景图生成结果）")
+    else:
+        print("  ℹ️  禁用缓存模式：将重新生成场景图")
     
     # 为每个 creator 生成场景图
     all_scene_results = []

@@ -249,27 +249,77 @@ def update_supabase_image_url(
             print(f"        ✓ 成功插入新记录 (creator_id={creator_id}, context_id={context_id}, type={type})")
             return True
         except requests.exceptions.RequestException as e:
-            error_detail = str(e)
-            if hasattr(e, 'response') and e.response is not None:
-                error_detail = f"HTTP {e.response.status_code}"
+            # 如果插入失败是因为唯一约束冲突（HTTP 409），则尝试更新
+            if hasattr(e, 'response') and e.response is not None and e.response.status_code == 409:
+                print(f"        ℹ️  插入时发现记录已存在（唯一约束冲突），转为更新操作 (creator_id={creator_id}, context_id={context_id}, type={type})")
+                # 尝试更新现有记录
+                update_url = f"{api_url}?creator_id=eq.{creator_id}&context_id=eq.{context_id}&type=eq.{type}"
+                update_payload = {
+                    "front_image_url": front_image_url
+                }
+                # 如果提供了 magnet_record，尝试更新其他字段
+                if magnet_record:
+                    if "front_name" in magnet_record:
+                        update_payload["front_name"] = magnet_record.get("front_name", "")
+                    if "front_image_prompt" in magnet_record:
+                        update_payload["front_image_prompt"] = magnet_record.get("front_image_prompt", "")
+                    if "front_style_key" in magnet_record:
+                        update_payload["front_style_key"] = magnet_record.get("front_style_key", "")
+                    if "task_id" in magnet_record:
+                        update_payload["task_id"] = magnet_record.get("task_id")
+                
                 try:
-                    error_body = e.response.json()
-                    error_detail += f": {error_body}"
-                except:
-                    error_detail += f": {e.response.text[:200]}"
-            print(f"        ⚠️  插入新记录失败 (creator_id={creator_id}, context_id={context_id}, type={type}): {error_detail}")
-            return False
+                    update_response = requests.patch(update_url, headers=headers, json=update_payload, timeout=30)
+                    update_response.raise_for_status()
+                    print(f"        ✓ 成功更新已存在的记录 (creator_id={creator_id}, context_id={context_id}, type={type})")
+                    return True
+                except requests.exceptions.RequestException as update_e:
+                    error_detail = str(update_e)
+                    if hasattr(update_e, 'response') and update_e.response is not None:
+                        error_detail = f"HTTP {update_e.response.status_code}"
+                        try:
+                            error_body = update_e.response.json()
+                            error_detail += f": {error_body}"
+                        except:
+                            error_detail += f": {update_e.response.text[:200]}"
+                    print(f"        ⚠️  更新已存在的记录失败 (creator_id={creator_id}, context_id={context_id}, type={type}): {error_detail}")
+                    return False
+            else:
+                # 其他类型的错误
+                error_detail = str(e)
+                if hasattr(e, 'response') and e.response is not None:
+                    error_detail = f"HTTP {e.response.status_code}"
+                    try:
+                        error_body = e.response.json()
+                        error_detail += f": {error_body}"
+                    except:
+                        error_detail += f": {e.response.text[:200]}"
+                print(f"        ⚠️  插入新记录失败 (creator_id={creator_id}, context_id={context_id}, type={type}): {error_detail}")
+                return False
     
     # 记录存在，进行更新
+    print(f"        ℹ️  记录已存在，进行更新操作 (creator_id={creator_id}, context_id={context_id}, type={type})")
     update_url = f"{api_url}?creator_id=eq.{creator_id}&context_id=eq.{context_id}&type=eq.{type}"
     
     payload = {
         "front_image_url": front_image_url
     }
     
+    # 如果提供了 magnet_record，尝试更新其他字段
+    if magnet_record:
+        if "front_name" in magnet_record:
+            payload["front_name"] = magnet_record.get("front_name", "")
+        if "front_image_prompt" in magnet_record:
+            payload["front_image_prompt"] = magnet_record.get("front_image_prompt", "")
+        if "front_style_key" in magnet_record:
+            payload["front_style_key"] = magnet_record.get("front_style_key", "")
+        if "task_id" in magnet_record:
+            payload["task_id"] = magnet_record.get("task_id")
+    
     try:
         response = requests.patch(update_url, headers=headers, json=payload, timeout=30)
         response.raise_for_status()
+        print(f"        ✓ 成功更新记录 (creator_id={creator_id}, context_id={context_id}, type={type})")
         return True
     except requests.exceptions.RequestException as e:
         error_detail = str(e)
@@ -307,6 +357,8 @@ def execute(**kwargs) -> Dict[str, Any]:
     # 默认参考图 URL（从环境变量或参数获取，如果没有则使用示例中的 URL）
     default_image_url = kwargs.get("default_image_url") or os.getenv("DEFAULT_IMAGE_URL") or "https://substackcdn.com/image/fetch/$s_!8MSN!,w_80,h_80,c_fill,f_webp,q_auto:good,fl_progressive:steep,g_auto/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F441213db-4824-4e48-9d28-a3a18952cbfc_592x592.png"
     use_cache = kwargs.get("use_cache", True)  # 第三步默认使用缓存（图片生成结果）
+    if not use_cache:
+        print("  ℹ️  禁用缓存模式：将重新生成所有 magnet 图片")
     # 每个 magnet 生成的图片数量（默认为 1）
     images_per_magnet = kwargs.get("images_per_magnet", 1)
     # 获取 Supabase 配置
