@@ -4,6 +4,7 @@
 import os
 import time
 from typing import Dict, Any, Optional, Tuple, List
+from urllib.parse import urlparse
 import requests
 
 from utils.cache import load_cache, save_cache
@@ -67,6 +68,18 @@ def generate_image(
     """
     调用图片生成 API 生成一张图片
     """
+    # 规范化 API URL：移除末尾斜杠，确保路径正确
+    api_url = api_url.rstrip('/')
+    # 如果 URL 是根路径或缺少路径，自动添加 /image-to-image
+    if not api_url.endswith('/image-to-image'):
+        # 检查是否是根路径（只有域名，没有路径）
+        # 例如：https://media.datail.ai 或 https://media.datail.ai/
+        parsed = urlparse(api_url)
+        # 如果路径为空或只有根路径，添加 /image-to-image
+        if not parsed.path or parsed.path == '/':
+            api_url = f"{api_url.rstrip('/')}/image-to-image"
+        # 如果已经有其他路径但不是 /image-to-image，保持原样（可能是自定义路径）
+    
     model = os.getenv("SCENE_MODEL", "gemini-3-pro-image-preview")
     payload = {
         "prompt": prompt,
@@ -88,7 +101,7 @@ def generate_image(
         print(f"          {prompt}")
     
     try:
-        response = requests.post(api_url, json=payload, timeout=120)
+        response = requests.post(api_url, json=payload, timeout=600)  # 10分钟超时
         response.raise_for_status()
         result = response.json()
         
@@ -287,8 +300,8 @@ def execute(**kwargs) -> Dict[str, Any]:
     # 获取配置
     step_two_result = kwargs.get("step_two_result", {})
     results = step_two_result.get("results", [])
-    # 图片生成 API URL 固定配置
-    image_api_url = "https://media.datail.ai/image-to-image"
+    # 图片生成 API URL（从环境变量获取，如果没有则使用默认值）
+    image_api_url = os.getenv("IMAGE_API_URL", "https://media.datail.ai/image-to-image")
     # key_prefix 固定为 "images"
     key_prefix = "images"
     # 默认参考图 URL（从环境变量或参数获取，如果没有则使用示例中的 URL）
@@ -324,12 +337,12 @@ def execute(**kwargs) -> Dict[str, Any]:
         
         print(f"  处理 Creator {creator_id} 的 {len(saved_records)} 个 magnet...")
         
-        # 检查缓存（图片生成结果可以缓存，但 Supabase 更新每次都要执行）
+        # 检查缓存（如果缓存存在，跳过图片生成和数据库更新）
         cached_result = None
         if use_cache:
             cached_result = load_cache(creator_id, "step_three")
             if cached_result:
-                print(f"    ✓ 使用缓存结果，跳过图片生成")
+                print(f"    ✓ 使用缓存结果，跳过图片生成和数据库更新")
                 cache_hits += 1
                 # 统计缓存的图片数量
                 for magnet_result in cached_result.get("magnet_results", []):
@@ -337,57 +350,6 @@ def execute(**kwargs) -> Dict[str, Any]:
                     # 统计每张图片的 URL 数量
                     for img in magnet_result.get("images", []):
                         total_images_generated += len(img.get("urls", []))
-                
-                # 即使使用缓存，也要执行 Supabase 更新
-                if supabase_url and supabase_api_key:
-                    cache_update_msg = "🔄 使用缓存结果，但仍需更新 Supabase..."
-                    print(f"    {cache_update_msg}")
-                    log_and_print(creator_id, "step_three", cache_update_msg)
-                    
-                    for magnet_result in cached_result.get("magnet_results", []):
-                        context_id = magnet_result.get("context_id", "")
-                        front_image_url = magnet_result.get("front_image_url")
-                        
-                        # 如果没有 front_image_url，尝试从 images 中获取
-                        if not front_image_url:
-                            images = magnet_result.get("images", [])
-                            if images and len(images) > 0:
-                                first_image_urls = images[0].get("urls", [])
-                                if first_image_urls and len(first_image_urls) > 0:
-                                    front_image_url = first_image_urls[0]
-                        
-                        if front_image_url and context_id:
-                            update_msg = f"更新 Magnet (context_id: {context_id}) 的 front_image_url: {front_image_url}"
-                            print(f"      {update_msg}")
-                            log_and_print(creator_id, "step_three", update_msg)
-                            
-                            # 从 saved_records 中查找对应的 magnet_record
-                            magnet_record = None
-                            for record in saved_records:
-                                if record.get("context_id") == context_id:
-                                    magnet_record = record
-                                    break
-                            
-                            update_success = update_supabase_image_url(
-                                creator_id=creator_id,
-                                context_id=context_id,
-                                front_image_url=front_image_url,
-                                supabase_url=supabase_url,
-                                supabase_api_key=supabase_api_key,
-                                magnet_record=magnet_record
-                            )
-                            if update_success:
-                                success_msg = f"✓ 成功更新 Supabase front_image_url (context_id: {context_id})"
-                                print(f"        {success_msg}")
-                                log_and_print(creator_id, "step_three", success_msg)
-                            else:
-                                warning_msg = f"⚠️  更新 Supabase front_image_url 失败 (context_id: {context_id})"
-                                print(f"        {warning_msg}")
-                                log_and_print(creator_id, "step_three", warning_msg, "WARNING")
-                        else:
-                            warning_msg = f"⚠️  Magnet (context_id: {context_id}) 没有可用的图片 URL，跳过 Supabase 更新"
-                            print(f"      {warning_msg}")
-                            log_and_print(creator_id, "step_three", warning_msg, "WARNING")
                 
                 all_image_results.append(cached_result)
                 continue
@@ -591,13 +553,31 @@ def execute(**kwargs) -> Dict[str, Any]:
         }
         all_image_results.append(creator_result_data)
         
-        # 为每个 creator 保存缓存
-        if use_cache:
+        # 检查是否有成功的图片生成结果，只有成功时才保存缓存
+        has_success = False
+        for magnet_result in creator_image_results:
+            images = magnet_result.get("images", [])
+            if images and len(images) > 0:
+                # 检查是否有成功的图片（status 为 "success" 或包含 urls）
+                for img in images:
+                    if img.get("status") == "success" or img.get("urls"):
+                        has_success = True
+                        break
+                if has_success:
+                    break
+        
+        # 为每个 creator 保存缓存（只有成功时才保存）
+        if use_cache and has_success:
             save_cache(creator_id, creator_result_data, "step_three")
             print(f"    ✓ 结果已保存到缓存")
+        elif use_cache and not has_success:
+            print(f"    ⚠️  没有成功的图片生成结果，跳过缓存保存")
         
         # 每个 Creator 处理完成后，立即确认所有 Supabase 更新已完成
-        print(f"  ✓ Creator {creator_id} 的所有图片生成和 Supabase 更新已完成")
+        if has_success:
+            print(f"  ✓ Creator {creator_id} 的所有图片生成和 Supabase 更新已完成")
+        else:
+            print(f"  ⚠️  Creator {creator_id} 的图片生成失败，未保存缓存")
     
     # 构建返回结果
     result = {

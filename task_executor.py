@@ -73,17 +73,33 @@ class TaskExecutor:
                     }
                 }
             
-            # 按 creator_id 正序排序（确保排序）
-            def get_creator_id_for_sort(creator: Dict[str, Any]) -> Any:
-                """获取用于排序的 creator_id，优先使用 creator_id，其次使用 id"""
-                creator_id_val = creator.get("creator_id") or creator.get("id")
-                # 尝试转换为数字进行排序，如果失败则按字符串排序
+            # 按 paid_subscribers_est 和 free_subscribers_est 降序排序
+            def get_creator_sort_key(creator: Dict[str, Any]) -> tuple:
+                """获取用于排序的键值，按 paid_subscribers_est 和 free_subscribers_est 降序
+                如果字段缺失或为 None，则视为 0
+                """
+                paid_subscribers = creator.get("paid_subscribers_est")
+                free_subscribers = creator.get("free_subscribers_est")
+                
+                # 将 None 或无效值转换为 0
+                paid_subscribers = paid_subscribers if paid_subscribers is not None else 0
+                free_subscribers = free_subscribers if free_subscribers is not None else 0
+                
+                # 转换为数字类型（处理可能的字符串类型）
                 try:
-                    return int(creator_id_val) if creator_id_val is not None else 0
+                    paid_subscribers = float(paid_subscribers) if paid_subscribers else 0
                 except (ValueError, TypeError):
-                    return str(creator_id_val) if creator_id_val is not None else ""
+                    paid_subscribers = 0
+                
+                try:
+                    free_subscribers = float(free_subscribers) if free_subscribers else 0
+                except (ValueError, TypeError):
+                    free_subscribers = 0
+                
+                # 返回元组用于排序，使用负值实现降序
+                return (-paid_subscribers, -free_subscribers)
             
-            all_creators.sort(key=get_creator_id_for_sort)
+            all_creators.sort(key=get_creator_sort_key)
             
             # 如果指定了 creator_id，则只处理该 Creator
             if creator_id:

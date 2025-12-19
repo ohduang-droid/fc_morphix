@@ -123,10 +123,12 @@
             margin-top: 1rem;
             padding-top: 1rem;
             border-top: 1px solid #eee;
+            flex-wrap: wrap;
         }
 
         .action-btn {
             flex: 1;
+            min-width: 80px;
             padding: 0.5rem 1rem;
             border: none;
             border-radius: 8px;
@@ -153,6 +155,21 @@
 
         .action-btn-secondary:hover {
             background: #e0e0e0;
+        }
+
+        .action-btn-generating {
+            background: #dbeafe;
+            color: #2563eb;
+            position: relative;
+        }
+
+        .action-btn-generating:hover {
+            background: #bfdbfe;
+        }
+
+        .action-btn-generating:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
         }
 
         .creator-header {
@@ -267,11 +284,123 @@
             color: #667eea;
         }
 
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-badge.pending {
+            background: #fef3c7;
+            color: #d97706;
+        }
+
+        .status-badge.generating {
+            background: #dbeafe;
+            color: #2563eb;
+        }
+
+        .status-badge.completed {
+            background: #d1fae5;
+            color: #059669;
+        }
+
+        .status-badge.failed {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
         .empty-state {
             text-align: center;
             color: white;
             padding: 3rem;
             font-size: 1.1rem;
+        }
+
+        .filters {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .filter-label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #666;
+        }
+
+        .filter-select {
+            padding: 0.75rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            background: white;
+            color: #333;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-select:hover {
+            border-color: #667eea;
+        }
+
+        .filter-select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .filter-actions {
+            display: flex;
+            gap: 0.5rem;
+            align-items: flex-end;
+        }
+
+        .filter-btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-btn-clear {
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        .filter-btn-clear:hover {
+            background: #e0e0e0;
+        }
+
+        .filter-btn-apply {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .filter-btn-apply:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
         }
 
         .refresh-btn {
@@ -322,6 +451,33 @@
         }
 
         .import-btn:active {
+            transform: scale(0.95);
+        }
+
+        .import-json-btn {
+            position: fixed;
+            bottom: 2rem;
+            right: 10rem;
+            background: white;
+            color: #667eea;
+            border: none;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            font-size: 1.2rem;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            transition: transform 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .import-json-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .import-json-btn:active {
             transform: scale(0.95);
         }
 
@@ -394,6 +550,64 @@
 
         .import-errors li {
             margin: 0.25rem 0;
+        }
+
+        /* 分页样式 */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .pagination-btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 8px;
+            background: white;
+            color: #667eea;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .pagination-btn:hover:not(:disabled) {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+        }
+
+        .pagination-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .pagination-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .pagination-info {
+            color: white;
+            font-size: 0.9rem;
+            margin: 0 1rem;
+        }
+
+        .pagination-page-numbers {
+            display: flex;
+            gap: 0.25rem;
+        }
+
+        .pagination-page-btn {
+            min-width: 36px;
+            height: 36px;
+            padding: 0;
         }
 
         /* 模态框样式 */
@@ -526,6 +740,7 @@
             align-items: center;
             gap: 0.5rem;
             flex: 1;
+            word-break: break-word;
         }
 
         .copy-btn {
@@ -769,6 +984,24 @@
                 flex-direction: column;
             }
 
+            .filters {
+                flex-direction: column;
+                padding: 1rem;
+            }
+
+            .filter-group {
+                width: 100%;
+                min-width: unset;
+            }
+
+            .filter-actions {
+                width: 100%;
+            }
+
+            .filter-btn {
+                flex: 1;
+            }
+
             .modal-content {
                 max-width: 100%;
                 margin: 1rem;
@@ -801,9 +1034,40 @@
                 bottom: 7rem;
             }
 
+            .import-json-btn {
+                right: 1rem;
+                bottom: 12rem;
+            }
+
             .refresh-btn {
                 right: 1rem;
                 bottom: 2rem;
+            }
+
+            .pagination {
+                flex-wrap: wrap;
+                gap: 0.5rem;
+            }
+
+            .pagination-info {
+                width: 100%;
+                text-align: center;
+                margin: 0.5rem 0 0 0;
+            }
+
+            .pagination-page-numbers {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .pagination-btn {
+                font-size: 0.85rem;
+                padding: 0.4rem 0.8rem;
+            }
+
+            .pagination-page-btn {
+                min-width: 32px;
+                height: 32px;
             }
         }
     </style>
@@ -820,11 +1084,45 @@
                 <div class="number" id="total-count">0</div>
                 <div class="label">总 Creator 数</div>
             </div>
+            <div class="stat-card">
+                <div class="number" id="pending-count">0</div>
+                <div class="label">待生成</div>
+            </div>
+            <div class="stat-card">
+                <div class="number" id="completed-count">0</div>
+                <div class="label">已完成</div>
+            </div>
+            <div class="stat-card">
+                <div class="number" id="failed-count">0</div>
+                <div class="label">失败</div>
+            </div>
+        </div>
+
+        <div id="filters" class="filters" style="display: none;">
+            <div class="filter-group">
+                <select id="categoryFilter" class="filter-select">
+                    <option value="">全部</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <select id="statusFilter" class="filter-select">
+                    <option value="">全部</option>
+                    <option value="pending">待生成</option>
+                    <option value="generating">生成中</option>
+                    <option value="completed">已完成</option>
+                    <option value="failed">失败</option>
+                </select>
+            </div>
+            <div class="filter-actions">
+                <button class="filter-btn filter-btn-clear" onclick="clearFilters()">清除</button>
+                <button class="filter-btn filter-btn-apply" onclick="applyFilters()">应用筛选</button>
+            </div>
         </div>
 
         <div id="loading" class="loading">加载中</div>
         <div id="error" class="error" style="display: none;"></div>
         <div id="creators-grid" class="creators-grid" style="display: none;"></div>
+        <div id="pagination" class="pagination" style="display: none;"></div>
         <div id="empty-state" class="empty-state" style="display: none;">
             暂无 Creator 数据
         </div>
@@ -832,6 +1130,7 @@
 
     <button class="refresh-btn" onclick="loadCreators()" title="刷新">↻</button>
     <button class="import-btn" onclick="document.getElementById('excelFileInput').click()" title="导入 Excel">📥</button>
+    <button class="import-json-btn" onclick="importFromJson()" title="从内部 JSON 文件导入" style="display: none;">📄</button>
     <input type="file" id="excelFileInput" class="file-input" accept=".xlsx,.xls" onchange="handleFileSelect(event)">
 
     <!-- 图片查看模态框 -->
@@ -882,6 +1181,17 @@
             </div>
             <div class="modal-body">
                 <div id="successMessage" class="success-message"></div>
+                <div id="messagePreviewContainer">
+                    <div class="email-preview-header">
+                        <span class="email-preview-title">Message</span>
+                        <button id="copyMessageBtn" class="copy-btn" onclick="copyMessageFromPreview(event)" title="复制 Message">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div id="messagePreview" class="email-preview empty">暂无 Message 内容</div>
+                </div>
                 <div id="emailInfo" class="email-info"></div>
                 <div id="emailPreviewContainer">
                     <div class="email-preview-header">
@@ -903,6 +1213,16 @@
     </div>
 
     <script>
+        // 分页相关变量
+        let allCreators = [];
+        let filteredCreators = [];
+        let currentPage = 1;
+        const itemsPerPage = 18;
+        
+        // 筛选相关变量
+        let currentCategoryFilter = '';
+        let currentStatusFilter = '';
+
         async function loadCreators() {
             const loadingEl = document.getElementById('loading');
             const errorEl = document.getElementById('error');
@@ -910,6 +1230,8 @@
             const emptyEl = document.getElementById('empty-state');
             const statsEl = document.getElementById('stats');
             const countEl = document.getElementById('total-count');
+            const paginationEl = document.getElementById('pagination');
+            const filtersEl = document.getElementById('filters');
 
             // 显示加载状态
             loadingEl.style.display = 'block';
@@ -917,6 +1239,8 @@
             gridEl.style.display = 'none';
             emptyEl.style.display = 'none';
             statsEl.style.display = 'none';
+            paginationEl.style.display = 'none';
+            filtersEl.style.display = 'none';
 
             try {
                 const response = await fetch('/api/creators');
@@ -925,22 +1249,136 @@
                 }
 
                 const data = await response.json();
-                const creators = data.creators || [];
+                allCreators = data.creators || [];
 
                 // 更新统计
                 countEl.textContent = data.count || 0;
+                
+                // 更新状态统计
+                const stats = data.stats || {};
+                document.getElementById('pending-count').textContent = stats.pending || 0;
+                document.getElementById('completed-count').textContent = stats.completed || 0;
+                document.getElementById('failed-count').textContent = stats.failed || 0;
+                
                 statsEl.style.display = 'flex';
+
+                // 初始化筛选器
+                initializeFilters();
+                filtersEl.style.display = 'flex';
 
                 // 隐藏加载状态
                 loadingEl.style.display = 'none';
 
-                if (creators.length === 0) {
+                if (allCreators.length === 0) {
                     emptyEl.style.display = 'block';
                     return;
                 }
 
-                // 渲染 creator 卡片
-                gridEl.innerHTML = creators.map(creator => {
+                // 应用当前筛选并重置到第一页
+                applyFilters();
+            } catch (error) {
+                loadingEl.style.display = 'none';
+                errorEl.textContent = `加载失败: ${error.message}`;
+                errorEl.style.display = 'block';
+            }
+        }
+
+        // 初始化筛选器
+        function initializeFilters() {
+            const categoryFilter = document.getElementById('categoryFilter');
+            
+            // 收集所有唯一的分类
+            const categories = new Set();
+            allCreators.forEach(creator => {
+                const categories_list = creator.content_category || [];
+                if (Array.isArray(categories_list)) {
+                    categories_list.forEach(cat => {
+                        if (cat && cat.trim()) {
+                            categories.add(cat.trim());
+                        }
+                    });
+                }
+            });
+            
+            // 清空现有选项（保留"全部"）
+            categoryFilter.innerHTML = '<option value="">全部</option>';
+            
+            // 按字母顺序排序并添加选项
+            Array.from(categories).sort().forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat;
+                option.textContent = cat;
+                categoryFilter.appendChild(option);
+            });
+        }
+
+        // 应用筛选
+        function applyFilters() {
+            const categoryFilter = document.getElementById('categoryFilter');
+            const statusFilter = document.getElementById('statusFilter');
+            
+            currentCategoryFilter = categoryFilter.value || '';
+            currentStatusFilter = statusFilter.value || '';
+            
+            // 筛选数据
+            filteredCreators = allCreators.filter(creator => {
+                // 分类筛选
+                if (currentCategoryFilter) {
+                    const categories = creator.content_category || [];
+                    if (!Array.isArray(categories) || !categories.includes(currentCategoryFilter)) {
+                        return false;
+                    }
+                }
+                
+                // 状态筛选
+                if (currentStatusFilter) {
+                    const status = creator.status || 'pending';
+                    if (status !== currentStatusFilter) {
+                        return false;
+                    }
+                }
+                
+                return true;
+            });
+            
+            // 重置到第一页并渲染
+            currentPage = 1;
+            renderPage(currentPage);
+        }
+
+        // 清除筛选
+        function clearFilters() {
+            document.getElementById('categoryFilter').value = '';
+            document.getElementById('statusFilter').value = '';
+            currentCategoryFilter = '';
+            currentStatusFilter = '';
+            applyFilters();
+        }
+
+        // 渲染指定页面的数据
+        function renderPage(page) {
+            const gridEl = document.getElementById('creators-grid');
+            const paginationEl = document.getElementById('pagination');
+            const emptyEl = document.getElementById('empty-state');
+
+            // 使用筛选后的数据
+            const displayCreators = filteredCreators.length > 0 ? filteredCreators : allCreators;
+
+            if (displayCreators.length === 0) {
+                emptyEl.style.display = 'block';
+                gridEl.style.display = 'none';
+                paginationEl.style.display = 'none';
+                return;
+            }
+
+            // 计算分页
+            const totalPages = Math.ceil(displayCreators.length / itemsPerPage);
+            const startIndex = (page - 1) * itemsPerPage;
+            const endIndex = Math.min(startIndex + itemsPerPage, displayCreators.length);
+            const pageCreators = displayCreators.slice(startIndex, endIndex);
+
+            // 渲染 creator 卡片
+            gridEl.innerHTML = pageCreators.map(creator => {
                     // 优先使用 creator_signature_image_url 作为头像
                     const imageUrl = creator.creator_signature_image_url;
                     const fallbackText = (creator.creator_name || 'C')[0].toUpperCase();
@@ -980,6 +1418,21 @@
                         return num.toLocaleString();
                     };
 
+                    // 获取状态并生成状态徽章
+                    const getStatusBadge = (status) => {
+                        const statusValue = status || 'pending';
+                        const statusMap = {
+                            'pending': { text: '待生成', class: 'pending' },
+                            'generating': { text: '生成中', class: 'generating' },
+                            'completed': { text: '已完成', class: 'completed' },
+                            'failed': { text: '失败', class: 'failed' }
+                        };
+                        const statusInfo = statusMap[statusValue] || statusMap['pending'];
+                        return `<span class="status-badge ${statusInfo.class}">${statusInfo.text}</span>`;
+                    };
+
+                    const statusBadge = getStatusBadge(creator.status);
+
                     const tags = [
                         ...(creator.creator_tokens_direct || []).map(t => `<span class="tag primary">${t}</span>`),
                         ...(creator.creator_tokens_implied || []).map(t => `<span class="tag">${t}</span>`)
@@ -1010,7 +1463,10 @@
                                     ${avatar}
                                 </div>
                                 <div class="creator-info">
-                                    <h3>${creator.creator_name || '未知'}</h3>
+                                    <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                                        <h3 style="margin: 0;">${creator.creator_name || '未知'}</h3>
+                                        ${statusBadge}
+                                    </div>
                                     <div class="newsletter">${creator.newsletter_name || '未设置'}</div>
                                 </div>
                             </div>
@@ -1056,18 +1512,125 @@
                             <div class="creator-actions">
                                 <button class="action-btn action-btn-secondary" onclick="event.stopPropagation(); showImageModal('${creator.creator_id || creator.id}')">Images</button>
                                 ${websiteButton}
+                                <button class="action-btn action-btn-secondary" onclick="event.stopPropagation(); generateCreator('${creator.creator_id || creator.id}', this)">生成</button>
                                 <button class="action-btn action-btn-primary" onclick="event.stopPropagation(); showEmailModal(${creatorData})">Message</button>
+                                <button class="action-btn action-btn-secondary" onclick="event.stopPropagation(); copyMessageFromCard(${creatorData}, this)" title="复制 Message">复制</button>
                             </div>
                         </div>
                     `;
                 }).join('');
 
-                gridEl.style.display = 'grid';
-            } catch (error) {
-                loadingEl.style.display = 'none';
-                errorEl.textContent = `加载失败: ${error.message}`;
-                errorEl.style.display = 'block';
+            gridEl.style.display = 'grid';
+            
+            // 渲染分页控件
+            renderPagination(page, totalPages);
+        }
+
+        // 渲染分页控件
+        function renderPagination(currentPage, totalPages) {
+            const paginationEl = document.getElementById('pagination');
+            
+            if (totalPages <= 1) {
+                paginationEl.style.display = 'none';
+                return;
             }
+
+            paginationEl.style.display = 'flex';
+
+            let paginationHTML = '';
+
+            // 上一页按钮
+            paginationHTML += `
+                <button class="pagination-btn" onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>
+                    ‹ 上一页
+                </button>
+            `;
+
+            // 页码按钮
+            const pageNumbers = [];
+            const maxVisiblePages = 7;
+            
+            if (totalPages <= maxVisiblePages) {
+                // 如果总页数少于等于最大可见页数，显示所有页码
+                for (let i = 1; i <= totalPages; i++) {
+                    pageNumbers.push(i);
+                }
+            } else {
+                // 否则显示部分页码
+                if (currentPage <= 4) {
+                    // 当前页在前几页
+                    for (let i = 1; i <= 5; i++) {
+                        pageNumbers.push(i);
+                    }
+                    pageNumbers.push('...');
+                    pageNumbers.push(totalPages);
+                } else if (currentPage >= totalPages - 3) {
+                    // 当前页在后几页
+                    pageNumbers.push(1);
+                    pageNumbers.push('...');
+                    for (let i = totalPages - 4; i <= totalPages; i++) {
+                        pageNumbers.push(i);
+                    }
+                } else {
+                    // 当前页在中间
+                    pageNumbers.push(1);
+                    pageNumbers.push('...');
+                    for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+                        pageNumbers.push(i);
+                    }
+                    pageNumbers.push('...');
+                    pageNumbers.push(totalPages);
+                }
+            }
+
+            // 渲染页码按钮
+            paginationHTML += '<div class="pagination-page-numbers">';
+            pageNumbers.forEach(pageNum => {
+                if (pageNum === '...') {
+                    paginationHTML += `<span class="pagination-info" style="margin: 0 0.25rem;">...</span>`;
+                } else {
+                    const isActive = pageNum === currentPage;
+                    paginationHTML += `
+                        <button class="pagination-btn pagination-page-btn ${isActive ? 'active' : ''}" 
+                                onclick="goToPage(${pageNum})" ${isActive ? 'disabled' : ''}>
+                            ${pageNum}
+                        </button>
+                    `;
+                }
+            });
+            paginationHTML += '</div>';
+
+            // 下一页按钮
+            paginationHTML += `
+                <button class="pagination-btn" onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>
+                    下一页 ›
+                </button>
+            `;
+
+            // 分页信息
+            const displayCreators = filteredCreators.length > 0 ? filteredCreators : allCreators;
+            const startIndex = (currentPage - 1) * itemsPerPage + 1;
+            const endIndex = Math.min(currentPage * itemsPerPage, displayCreators.length);
+            paginationHTML += `
+                <span class="pagination-info">
+                    显示 ${startIndex}-${endIndex} / 共 ${displayCreators.length} 个
+                </span>
+            `;
+
+            paginationEl.innerHTML = paginationHTML;
+        }
+
+        // 跳转到指定页面
+        function goToPage(page) {
+            const displayCreators = filteredCreators.length > 0 ? filteredCreators : allCreators;
+            const totalPages = Math.ceil(displayCreators.length / itemsPerPage);
+            if (page < 1 || page > totalPages) {
+                return;
+            }
+            currentPage = page;
+            renderPage(currentPage);
+            // 滚动到顶部
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
         // 页面加载时自动获取数据
@@ -1096,14 +1659,35 @@
             // 显示邮件信息
             const email = creator.contact_email || '未设置邮箱';
             const subject = creator.outreach_email_subject || 'Fridge Channel Magnet 合作邀请';
+            const message = creator.message;
             
             // 转义HTML和JavaScript特殊字符
             const escapeHtml = (str) => {
+                if (!str) return '';
                 const div = document.createElement('div');
                 div.textContent = str;
                 return div.innerHTML;
             };
             
+            // 显示 Message（在收件人和主题上方，使用和 Content 相同的样式）
+            const messagePreviewContainer = document.getElementById('messagePreviewContainer');
+            const messagePreview = document.getElementById('messagePreview');
+            
+            // 检查 message 是否有值（不为 null、undefined 或空字符串）
+            const hasMessage = message !== null && message !== undefined && String(message).trim() !== '';
+            
+            // 始终显示 Message 区块
+            messagePreviewContainer.style.display = 'block';
+            
+            if (hasMessage) {
+                messagePreview.textContent = message;
+                messagePreview.classList.remove('empty');
+            } else {
+                messagePreview.textContent = '暂无 Message 内容';
+                messagePreview.classList.add('empty');
+            }
+            
+            // 显示收件人和主题信息
             emailInfo.innerHTML = `
                 <div class="email-info-row">
                     <span class="email-info-label">收件人：</span>
@@ -1189,17 +1773,53 @@
 
         // 复制到剪贴板
         async function copyToClipboard(text, button) {
+            // 检测按钮内容是文字还是图标
+            const originalHTML = button.innerHTML;
+            const originalText = button.textContent.trim();
+            const hasSvg = button.querySelector('svg') !== null;
+            
+            // 如果是文字按钮，使用文字反馈；如果是图标按钮，使用图标反馈
+            let feedbackHTML;
+            if (hasSvg) {
+                // 获取原始 SVG 的尺寸
+                const originalSvg = button.querySelector('svg');
+                let svgWidth = '18px';
+                let svgHeight = '18px';
+                
+                if (originalSvg) {
+                    const inlineWidth = originalSvg.style.width;
+                    const inlineHeight = originalSvg.style.height;
+                    
+                    if (inlineWidth) svgWidth = inlineWidth;
+                    if (inlineHeight) svgHeight = inlineHeight;
+                    
+                    if (!inlineWidth || !inlineHeight) {
+                        const computedStyle = window.getComputedStyle(originalSvg);
+                        if (!inlineWidth && computedStyle.width && computedStyle.width !== 'auto') {
+                            svgWidth = computedStyle.width;
+                        }
+                        if (!inlineHeight && computedStyle.height && computedStyle.height !== 'auto') {
+                            svgHeight = computedStyle.height;
+                        }
+                    }
+                }
+                
+                feedbackHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: ${svgWidth}; height: ${svgHeight}; display: block;">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                `;
+            } else {
+                // 文字按钮，显示"已复制"
+                feedbackHTML = '已复制';
+            }
+            
             try {
                 await navigator.clipboard.writeText(text);
                 
                 // 更新按钮状态
-                const originalHTML = button.innerHTML;
                 button.classList.add('copied');
-                button.innerHTML = `
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                    </svg>
-                `;
+                button.innerHTML = feedbackHTML;
                 
                 // 2秒后恢复
                 setTimeout(() => {
@@ -1218,13 +1838,8 @@
                     document.execCommand('copy');
                     
                     // 更新按钮状态
-                    const originalHTML = button.innerHTML;
                     button.classList.add('copied');
-                    button.innerHTML = `
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                        </svg>
-                    `;
+                    button.innerHTML = feedbackHTML;
                     
                     setTimeout(() => {
                         button.classList.remove('copied');
@@ -1259,6 +1874,46 @@
         function copySubject(button) {
             const text = button.getAttribute('data-copy-text');
             copyToClipboard(text, button);
+        }
+
+        // 复制 Message（从预览区域）
+        function copyMessageFromPreview(event) {
+            if (!currentCreator) return;
+            const message = currentCreator.message;
+            if (!message) {
+                alert('暂无 Message 内容可复制');
+                return;
+            }
+            const button = event ? event.target.closest('.copy-btn') : document.getElementById('copyMessageBtn');
+            copyToClipboard(message, button);
+        }
+
+        // 复制 Message（从卡片）
+        async function copyMessageFromCard(creatorData, buttonElement) {
+            // 如果传入的是字符串（转义的 JSON），需要解析
+            let creator;
+            if (typeof creatorData === 'string') {
+                try {
+                    // 将转义的引号还原
+                    const unescaped = creatorData.replace(/&quot;/g, '"');
+                    creator = JSON.parse(unescaped);
+                } catch (e) {
+                    console.error('解析 creator 数据失败:', e);
+                    alert('复制失败：数据格式错误');
+                    return;
+                }
+            } else {
+                creator = creatorData;
+            }
+            
+            const message = creator.message;
+            if (!message || (typeof message === 'string' && message.trim() === '')) {
+                alert('该 Creator 没有 Message 内容可复制');
+                return;
+            }
+            
+            const messageText = typeof message === 'string' ? message : String(message);
+            await copyToClipboard(messageText, buttonElement);
         }
 
         // 发送邮件
@@ -1600,6 +2255,204 @@
                 closeImportModal();
             }
         });
+
+        // 生成单个 Creator
+        async function generateCreator(creatorId, buttonElement) {
+            if (!creatorId) {
+                alert('Creator ID 无效');
+                return;
+            }
+
+            // 确认操作
+            if (!confirm(`确定要为 Creator ${creatorId} 执行生成任务吗？\n\n这将执行步骤 2-4，可能需要几分钟时间，请耐心等待。`)) {
+                return;
+            }
+
+            // 保存原始按钮文本和状态
+            const originalText = buttonElement.textContent;
+            const originalDisabled = buttonElement.disabled;
+            const originalClass = buttonElement.className;
+
+            // 更新按钮状态
+            buttonElement.disabled = true;
+            buttonElement.textContent = '生成中...';
+            buttonElement.classList.remove('action-btn-secondary');
+            buttonElement.classList.add('action-btn-generating');
+
+            try {
+                // 添加超时控制（10分钟）
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 600000);
+
+                let response;
+                try {
+                    response = await fetch(`/api/creators/${creatorId}/generate`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        signal: controller.signal
+                    });
+                    clearTimeout(timeoutId);
+                } catch (fetchError) {
+                    clearTimeout(timeoutId);
+                    if (fetchError.name === 'AbortError') {
+                        throw new Error('生成任务超时（超过10分钟），请检查任务状态或稍后重试');
+                    }
+                    throw fetchError;
+                }
+
+                let data;
+                try {
+                    data = await response.json();
+                } catch (jsonError) {
+                    const text = await response.text();
+                    throw new Error(`服务器返回了无效的响应: ${text.substring(0, 200)}`);
+                }
+
+                if (response.ok) {
+                    alert(`✓ ${data.message || '生成完成'}`);
+                    // 刷新列表以更新状态
+                    setTimeout(() => {
+                        loadCreators();
+                    }, 1000);
+                } else {
+                    throw new Error(data.detail || data.message || '生成失败');
+                }
+            } catch (error) {
+                alert(`生成失败: ${error.message}\n\n如果任务正在执行，请稍后刷新页面查看状态。`);
+                console.error('生成错误:', error);
+            } finally {
+                // 恢复按钮状态
+                buttonElement.disabled = originalDisabled;
+                buttonElement.textContent = originalText;
+                buttonElement.className = originalClass;
+            }
+        }
+
+        // 从内部 JSON 文件导入
+        async function importFromJson() {
+            // 显示导入模态框
+            showImportModal();
+
+            const progressFill = document.getElementById('progressFill');
+            const importProgress = document.getElementById('importProgress');
+            const importResult = document.getElementById('importResult');
+            let progressInterval = null;
+
+            try {
+                // 模拟进度
+                let progress = 0;
+                progressInterval = setInterval(() => {
+                    progress += 5;
+                    if (progress <= 90) {
+                        progressFill.style.width = progress + '%';
+                    }
+                }, 300);
+
+                // 添加超时控制（5分钟）
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 300000);
+
+                let response;
+                try {
+                    response = await fetch('/api/import-creators', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        signal: controller.signal
+                    });
+                    clearTimeout(timeoutId);
+                } catch (fetchError) {
+                    clearTimeout(timeoutId);
+                    if (fetchError.name === 'AbortError') {
+                        throw new Error('请求超时，请检查网络连接');
+                    }
+                    throw fetchError;
+                }
+
+                if (progressInterval) {
+                    clearInterval(progressInterval);
+                    progressInterval = null;
+                }
+                progressFill.style.width = '100%';
+
+                // 尝试解析响应
+                let data;
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    try {
+                        data = await response.json();
+                    } catch (jsonError) {
+                        const text = await response.text();
+                        throw new Error(`服务器返回了无效的 JSON 响应: ${text.substring(0, 200)}`);
+                    }
+                } else {
+                    const text = await response.text();
+                    throw new Error(`服务器返回了非 JSON 响应: ${text.substring(0, 200)}`);
+                }
+
+                // 隐藏进度条
+                importProgress.classList.remove('show');
+
+                // 显示结果
+                if (response.ok) {
+                    importResult.className = 'import-result success show';
+                    let resultHtml = `
+                        <div style="font-weight: 600; margin-bottom: 0.5rem;">✓ ${data.message || '导入完成'}</div>
+                        <div style="font-size: 0.9rem;">
+                            <div>解析行数: ${data.total_parsed || 0}</div>
+                            <div>成功导入: ${data.total_inserted || 0}</div>
+                            ${data.total_skipped !== undefined ? `<div>跳过（已导入）: ${data.total_skipped}</div>` : ''}
+                            <div>失败: ${data.total_failed || 0}</div>
+                        </div>
+                    `;
+                    
+                    if (data.errors && data.errors.length > 0) {
+                        resultHtml += `
+                            <div class="import-errors">
+                                <div style="font-weight: 600; margin-top: 1rem; margin-bottom: 0.5rem;">错误详情：</div>
+                                <ul>
+                                    ${data.errors.map(err => `<li>${err}</li>`).join('')}
+                                </ul>
+                            </div>
+                        `;
+                    }
+                    
+                    importResult.innerHTML = resultHtml;
+
+                    // 如果成功导入了数据，刷新列表
+                    if (data.total_inserted > 0) {
+                        setTimeout(() => {
+                            loadCreators();
+                        }, 1000);
+                    }
+                } else {
+                    importResult.className = 'import-result error show';
+                    const errorMsg = data.detail || data.message || `HTTP ${response.status}: ${response.statusText}`;
+                    importResult.innerHTML = `
+                        <div style="font-weight: 600;">✗ 导入失败</div>
+                        <div style="margin-top: 0.5rem; word-break: break-word;">${errorMsg}</div>
+                    `;
+                }
+            } catch (error) {
+                if (progressInterval) {
+                    clearInterval(progressInterval);
+                }
+                importProgress.classList.remove('show');
+                importResult.className = 'import-result error show';
+                const errorMsg = error.message || '未知错误';
+                importResult.innerHTML = `
+                    <div style="font-weight: 600;">✗ 导入失败</div>
+                    <div style="margin-top: 0.5rem; word-break: break-word;">${errorMsg}</div>
+                    <div style="margin-top: 0.5rem; font-size: 0.85rem; color: #666;">
+                        请检查：1) 网络连接是否正常 2) JSON 文件是否存在 3) 服务器是否正常运行
+                    </div>
+                `;
+                console.error('导入错误:', error);
+            }
+        }
     </script>
 </body>
 </html>

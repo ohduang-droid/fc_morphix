@@ -14,6 +14,7 @@ from io import BytesIO
 from datetime import datetime
 from PIL import Image
 from openpyxl import load_workbook
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 logger = logging.getLogger(__name__)
 
@@ -475,12 +476,6 @@ class ExcelImporter:
                 creator_data = self._build_creator_data(row, row_idx, column_map)
                 creators_to_insert.append(creator_data)
                 logger.debug(f"    ✓ 第 {row_idx} 行数据解析完成")
-            except DifyAPIError as e:
-                # Dify API 调用失败，跳过当前 Creator
-                creator_name = row[column_map["creator_name"] - 1].value if column_map["creator_name"] <= len(row) else "Unknown"
-                logger.warning(f"  第 {row_idx} 行: Creator '{creator_name}' 的 Dify API 调用失败，跳过: {str(e)}")
-                skipped_rows.append(row_idx)
-                continue
             except Exception as e:
                 # 其他异常也跳过
                 creator_name = row[column_map["creator_name"] - 1].value if column_map["creator_name"] <= len(row) else "Unknown"
@@ -498,7 +493,13 @@ class ExcelImporter:
         if not creators_to_insert:
             raise ExcelImportError("Excel 文件中没有有效的数据行")
         
-        return creators_to_insert
+        # 并发生成 tokens（一次并发10个请求）
+        logger.info("=" * 80)
+        logger.info("开始并发生成 tokens...")
+        creators_with_tokens = self._generate_tokens_batch_concurrent(creators_to_insert, max_workers=10)
+        logger.info("=" * 80)
+        
+        return creators_with_tokens
     
     def _build_creator_data(self, row: List[Any], row_idx: int, column_map: Dict[str, int]) -> Dict[str, Any]:
         """
@@ -585,6 +586,13 @@ class ExcelImporter:
                 if categories:
                     creator_data["content_category"] = categories
                     logger.debug(f"    → 分类: {categories}")
+                else:
+                    creator_data["content_category"] = []
+            else:
+                creator_data["content_category"] = []
+        else:
+            # 如果没有 content_category 列，设置为空列表
+            creator_data["content_category"] = []
         
         if "creator_signature_image_url" in column_map and column_map["creator_signature_image_url"] <= len(row):
             image_url = row[column_map["creator_signature_image_url"] - 1].value
@@ -603,25 +611,8 @@ class ExcelImporter:
                     creator_data["creator_signature_image_url"] = original_url
                     logger.warning(f"    ⚠ 签名图片上传到 S3 失败，使用原始 URL: {original_url}")
         
-        # 调用 Dify API 生成 tokens
-        # 如果 Dify 配置未设置，跳过 tokens 生成
-        if not self.dify_url or not self.dify_api_key:
-            logger.debug(f"    第 {row_idx} 行: Dify 配置未设置，跳过 tokens 生成")
-            return creator_data
-        
-        # 调用 Dify API 生成 tokens（如果失败会抛出异常）
-        logger.info(f"    第 {row_idx} 行: 开始调用 Dify API 生成 tokens (Creator: {creator_name_str})")
-        creator_tokens_direct = self._call_dify_for_tokens(creator_data, token_type="direct")
-        creator_tokens_implied = self._call_dify_for_tokens(creator_data, token_type="implied")
-        logger.info(f"    第 {row_idx} 行: Dify API 调用完成")
-        
-        if creator_tokens_direct:
-            creator_data["creator_tokens_direct"] = creator_tokens_direct
-            logger.debug(f"    → creator_tokens_direct: {creator_tokens_direct}")
-        
-        if creator_tokens_implied:
-            creator_data["creator_tokens_implied"] = creator_tokens_implied
-            logger.debug(f"    → creator_tokens_implied: {creator_tokens_implied}")
+        # 注意：Dify API 调用已移至 parse_data_rows 方法中批量并发处理
+        # 这里只返回基础数据，tokens 将在后续批量生成
         
         return creator_data
     
@@ -885,6 +876,143 @@ class ExcelImporter:
             logger.debug(f"    请求 Payload: {json.dumps(payload, ensure_ascii=False, indent=2)}")
             raise DifyAPIError(f"处理 Dify API 响应失败（{token_type} tokens）: {error_detail}") from e
     
+    def _generate_tokens_for_creator(self, creator_data: Dict[str, Any], creator_index: int = 0, total_count: int = 0) -> Tuple[Dict[str, Any], Optional[Exception]]:
+        """
+        为单个 Creator 生成 tokens（direct 和 implied）
+        
+        Args:
+            creator_data: Creator 数据字典
+            creator_index: Creator 索引（用于日志）
+            total_count: 总数（用于日志）
+            
+        Returns:
+            (creator_data_with_tokens, error): 包含 tokens 的 creator 数据和错误（如果有）
+        """
+        creator_name = creator_data.get("creator_name", "Unknown")
+        creator_id = creator_data.get("creator_id", "Unknown")
+        
+        # 复制数据，避免修改原始数据
+        result_data = creator_data.copy()
+        
+        # 如果 Dify 配置未设置，跳过 tokens 生成
+        if not self.dify_url or not self.dify_api_key:
+            logger.debug(f"    Creator {creator_index}/{total_count} ({creator_name}): Dify 配置未设置，跳过 tokens 生成")
+            return result_data, None
+        
+        try:
+            logger.info(f"    Creator {creator_index}/{total_count} ({creator_name}): 开始调用 Dify API 生成 tokens")
+            
+            # 并发调用 direct 和 implied（使用线程池）
+            creator_tokens_direct = None
+            creator_tokens_implied = None
+            direct_error = None
+            implied_error = None
+            
+            # 使用线程池并发执行 direct 和 implied
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                future_direct = executor.submit(self._call_dify_for_tokens, creator_data, "direct")
+                future_implied = executor.submit(self._call_dify_for_tokens, creator_data, "implied")
+                
+                # 获取结果
+                try:
+                    creator_tokens_direct = future_direct.result()
+                except Exception as e:
+                    direct_error = e
+                    logger.warning(f"    Creator {creator_index}/{total_count} ({creator_name}): ✗ creator_tokens_direct 生成失败: {str(e)}")
+                
+                try:
+                    creator_tokens_implied = future_implied.result()
+                except Exception as e:
+                    implied_error = e
+                    logger.warning(f"    Creator {creator_index}/{total_count} ({creator_name}): ✗ creator_tokens_implied 生成失败: {str(e)}")
+            
+            # 设置结果
+            if creator_tokens_direct:
+                result_data["creator_tokens_direct"] = creator_tokens_direct
+                logger.info(f"    Creator {creator_index}/{total_count} ({creator_name}): ✓ creator_tokens_direct 生成成功: {len(creator_tokens_direct)} 个")
+            else:
+                logger.warning(f"    Creator {creator_index}/{total_count} ({creator_name}): ⚠ creator_tokens_direct 为空")
+            
+            if creator_tokens_implied:
+                result_data["creator_tokens_implied"] = creator_tokens_implied
+                logger.info(f"    Creator {creator_index}/{total_count} ({creator_name}): ✓ creator_tokens_implied 生成成功: {len(creator_tokens_implied)} 个")
+            else:
+                logger.warning(f"    Creator {creator_index}/{total_count} ({creator_name}): ⚠ creator_tokens_implied 为空")
+            
+            # 如果有错误，返回第一个错误
+            error = direct_error or implied_error
+            if error:
+                logger.warning(f"    Creator {creator_index}/{total_count} ({creator_name}): ⚠ 部分 tokens 生成失败")
+            
+            logger.info(f"    Creator {creator_index}/{total_count} ({creator_name}): ✓ Dify API 调用完成")
+            return result_data, error
+            
+        except DifyAPIError as e:
+            logger.warning(f"    Creator {creator_index}/{total_count} ({creator_name}): ✗ Dify API 调用失败: {str(e)}")
+            return result_data, e
+        except Exception as e:
+            logger.error(f"    Creator {creator_index}/{total_count} ({creator_name}): ✗ 处理时发生异常: {str(e)}")
+            return result_data, e
+    
+    def _generate_tokens_batch_concurrent(self, creators: List[Dict[str, Any]], max_workers: int = 10) -> List[Dict[str, Any]]:
+        """
+        并发生成 tokens（使用线程池，一次并发 max_workers 个请求）
+        
+        Args:
+            creators: Creator 数据列表
+            max_workers: 最大并发数（默认 10）
+            
+        Returns:
+            包含 tokens 的 Creator 数据列表
+        """
+        if not creators:
+            return []
+        
+        # 如果 Dify 配置未设置，直接返回原始数据
+        if not self.dify_url or not self.dify_api_key:
+            logger.info("Dify 配置未设置，跳过 tokens 生成")
+            return creators
+        
+        logger.info(f"开始并发生成 tokens，并发数: {max_workers}，总数: {len(creators)}")
+        
+        processed_creators = []
+        failed_count = 0
+        
+        # 使用线程池并发执行
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # 提交所有任务
+            future_to_creator = {
+                executor.submit(
+                    self._generate_tokens_for_creator,
+                    creator,
+                    idx + 1,
+                    len(creators)
+                ): (idx, creator)
+                for idx, creator in enumerate(creators)
+            }
+            
+            # 收集结果（按原始顺序）
+            results = [None] * len(creators)
+            
+            for future in as_completed(future_to_creator):
+                idx, original_creator = future_to_creator[future]
+                try:
+                    creator_with_tokens, error = future.result()
+                    results[idx] = creator_with_tokens
+                    if error:
+                        failed_count += 1
+                except Exception as e:
+                    logger.error(f"    处理 Creator 时发生未捕获的异常: {str(e)}")
+                    results[idx] = original_creator
+                    failed_count += 1
+        
+        # 过滤掉 None（理论上不应该有）
+        processed_creators = [c for c in results if c is not None]
+        
+        logger.info(f"✓ Tokens 生成完成：成功 {len(processed_creators) - failed_count} 个，失败 {failed_count} 个")
+        
+        return processed_creators
+    
     def _parse_sse_response(self, response: requests.Response) -> str:
         """
         解析 Dify 流式响应（Server-Sent Events 格式）
@@ -951,12 +1079,25 @@ class ExcelImporter:
             
         Returns:
             插入结果字典，包含 total_inserted, total_failed, errors 等
-            
-        Raises:
-            ExcelImportError: 如果插入失败
+            注意：即使部分插入失败，也不会抛出异常，而是返回错误信息
         """
         logger.info("开始批量插入数据到 Supabase...")
         logger.info(f"API URL: {self.api_url}")
+        
+        # 规范化所有 creator 的 content_category 字段，确保始终是数组格式
+        for creator in creators:
+            if "content_category" in creator:
+                category = creator["content_category"]
+                if isinstance(category, list):
+                    # 确保列表中的元素都是字符串
+                    creator["content_category"] = [str(c).strip() for c in category if str(c).strip()]
+                else:
+                    # 如果是字符串或其他类型，使用 _parse_categories 方法解析
+                    parsed_categories = self._parse_categories(category)
+                    creator["content_category"] = parsed_categories if parsed_categories else []
+            else:
+                # 如果没有 content_category 字段，设置为空列表
+                creator["content_category"] = []
         
         total_inserted = 0
         total_failed = 0
@@ -1005,54 +1146,26 @@ class ExcelImporter:
                                 total_inserted += 1
                                 logger.debug(f"      ✓ {creator_name} 插入成功")
                             else:
-                                # 遇到失败立即终止，打印请求结构体
+                                # 记录失败但不终止，继续处理下一条
                                 error_msg = single_response.text
-                                logger.error("=" * 80)
-                                logger.error(f"✗ 插入失败，立即终止处理")
-                                logger.error(f"Creator 名称: {creator_name}")
-                                logger.error(f"HTTP 状态码: {single_response.status_code}")
-                                logger.error(f"错误响应: {error_msg}")
-                                logger.error(f"请求数据结构体:")
-                                logger.error(json.dumps(creator, indent=2, ensure_ascii=False))
-                                logger.error("=" * 80)
-                                
-                                raise ExcelImportError(
-                                    f"插入失败: Creator '{creator_name}' - HTTP {single_response.status_code}\n"
-                                    f"错误详情: {error_msg}\n"
-                                    f"请求数据: {json.dumps(creator, indent=2, ensure_ascii=False)}"
-                                )
-                        except ExcelImportError:
-                            raise
+                                total_failed += 1
+                                error_detail = f"Creator '{creator_name}' - HTTP {single_response.status_code}: {error_msg}"
+                                errors.append(error_detail)
+                                logger.error(f"      ✗ {creator_name} 插入失败 (HTTP {single_response.status_code})")
+                                logger.debug(f"        错误详情: {error_msg[:200]}")
                         except Exception as e:
-                            # 遇到异常立即终止，打印请求结构体
-                            logger.error("=" * 80)
-                            logger.error(f"✗ 插入异常，立即终止处理")
-                            logger.error(f"Creator 名称: {creator_name}")
-                            logger.error(f"异常信息: {str(e)}")
-                            logger.error(f"请求数据结构体:")
-                            logger.error(json.dumps(creator, indent=2, ensure_ascii=False))
-                            logger.error("=" * 80)
-                            
-                            raise ExcelImportError(
-                                f"插入异常: Creator '{creator_name}' - {str(e)}\n"
-                                f"请求数据: {json.dumps(creator, indent=2, ensure_ascii=False)}"
-                            ) from e
-            except ExcelImportError:
-                raise
+                            # 记录异常但不终止，继续处理下一条
+                            total_failed += 1
+                            error_detail = f"Creator '{creator_name}' - 异常: {str(e)}"
+                            errors.append(error_detail)
+                            logger.error(f"      ✗ {creator_name} 插入异常: {str(e)}")
             except Exception as e:
-                # 遇到批量插入异常立即终止，打印请求结构体
-                logger.error("=" * 80)
-                logger.error(f"✗ 批量插入异常，立即终止处理")
-                logger.error(f"批次: {batch_idx}/{total_batches}")
-                logger.error(f"异常信息: {str(e)}")
-                logger.error(f"请求数据结构体 (批次数据):")
-                logger.error(json.dumps(batch, indent=2, ensure_ascii=False))
-                logger.error("=" * 80)
-                
-                raise ExcelImportError(
-                    f"批量插入异常: {str(e)}\n"
-                    f"批次数据: {json.dumps(batch, indent=2, ensure_ascii=False)}"
-                ) from e
+                # 批量插入异常，记录错误但继续处理下一批
+                total_failed += len(batch)
+                error_detail = f"批次 {batch_idx} 批量插入异常: {str(e)}"
+                errors.append(error_detail)
+                logger.error(f"  ✗ 第 {batch_idx} 批批量插入异常: {str(e)}")
+                logger.debug(f"    批次数据: {json.dumps(batch[:1], indent=2, ensure_ascii=False)}")  # 只打印第一条作为示例
         
         logger.info("=" * 80)
         logger.info("导入处理完成")
@@ -1159,4 +1272,239 @@ def import_creators_from_excel(
         s3_key_prefix=s3_key_prefix
     )
     return importer.import_from_file(filename, file_contents)
+
+
+def import_creators_from_json(
+    json_file_path: str,
+    supabase_url: str,
+    supabase_api_key: str,
+    dify_url: str = None,
+    dify_user: str = None,
+    s3_bucket: str = None,
+    s3_key_prefix: str = None
+) -> Dict[str, Any]:
+    """
+    从 output.json 文件导入 Creator 数据
+    使用 JSON 文件中的 creator_id，导入成功的结果会写入缓存，避免多次执行时重复导入
+    每个 Creator 在导入时会调用 Dify API 生成 creator_tokens_direct 和 creator_tokens_implied
+    
+    Args:
+        json_file_path: output.json 文件路径
+        supabase_url: Supabase URL
+        supabase_api_key: Supabase API Key
+        dify_url: Dify API URL (可选，从环境变量 DIFY_URL 获取)
+        dify_user: Dify API User (可选，从环境变量 DIFY_USER 获取)
+        s3_bucket: S3 Bucket 名称 (可选，从环境变量 S3_BUCKET 获取)
+        s3_key_prefix: S3 键前缀 (可选，从环境变量 S3_CREATOR_PREFIX 获取)
+        
+    Note:
+        dify_api_key 将从环境变量 DIFY_API_KEY_TOKEN 自动获取
+        
+    Returns:
+        导入结果字典
+        
+    Raises:
+        ExcelImportError: 如果导入失败
+    """
+    from pathlib import Path
+    
+    logger.info("=" * 80)
+    logger.info("开始处理 JSON 文件导入请求")
+    logger.info(f"文件路径: {json_file_path}")
+    
+    # 检查文件是否存在
+    json_path = Path(json_file_path)
+    if not json_path.exists():
+        raise ExcelImportError(f"文件不存在: {json_file_path}")
+    
+    # 读取 JSON 文件
+    try:
+        with open(json_path, "r", encoding="utf-8") as f:
+            creators = json.load(f)
+    except json.JSONDecodeError as e:
+        raise ExcelImportError(f"JSON 文件格式错误: {str(e)}")
+    except Exception as e:
+        raise ExcelImportError(f"读取文件失败: {str(e)}")
+    
+    if not isinstance(creators, list):
+        raise ExcelImportError("JSON 文件格式错误：根元素必须是数组")
+    
+    logger.info(f"✓ 文件读取成功，共 {len(creators)} 条记录")
+    
+    # 加载已导入的缓存
+    cache_file = Path("cache") / "imported_creators.json"
+    imported_creator_ids = set()
+    
+    if cache_file.exists():
+        try:
+            with open(cache_file, "r", encoding="utf-8") as f:
+                cached_data = json.load(f)
+                imported_creator_ids = set(cached_data.get("creator_ids", []))
+                logger.info(f"✓ 加载缓存，已导入 {len(imported_creator_ids)} 个 Creator")
+        except Exception as e:
+            logger.warning(f"加载缓存失败: {str(e)}，将重新导入所有记录")
+    
+    # 过滤出未导入的记录（使用 JSON 文件中的 creator_id）
+    new_creators = []
+    skipped_count = 0
+    
+    for creator in creators:
+        # 跳过空记录
+        if not creator:
+            skipped_count += 1
+            continue
+        
+        creator_id = creator.get("creator_id")
+        if not creator_id:
+            logger.warning(f"跳过缺少 creator_id 的记录: {json.dumps(creator, ensure_ascii=False)[:100]}")
+            skipped_count += 1
+            continue
+        
+        creator_id_str = str(creator_id)
+        if creator_id_str in imported_creator_ids:
+            skipped_count += 1
+            continue
+        
+        # 使用 JSON 文件中的 creator_id，不生成新的 UUID
+        new_creators.append(creator)
+    
+    logger.info(f"✓ 过滤完成：新记录 {len(new_creators)} 条，已导入跳过 {skipped_count} 条")
+    
+    if not new_creators:
+        logger.info("没有需要导入的新记录")
+        return {
+            "status": "success",
+            "message": "没有需要导入的新记录",
+            "total_parsed": len(creators),
+            "total_inserted": 0,
+            "total_skipped": skipped_count,
+            "total_failed": 0,
+            "errors": []
+        }
+    
+    # 从环境变量获取 Dify API Key
+    dify_api_key = os.getenv("DIFY_API_KEY_TOKEN")
+    
+    # 创建 ExcelImporter 实例（包含 Dify 配置，用于生成 tokens）
+    importer = ExcelImporter(
+        supabase_url=supabase_url,
+        supabase_api_key=supabase_api_key,
+        dify_url=dify_url,
+        dify_api_key=dify_api_key,
+        dify_user=dify_user,
+        s3_bucket=s3_bucket,
+        s3_key_prefix=s3_key_prefix
+    )
+    
+    # 分批处理：每10条处理一次，立即写入数据库和缓存
+    batch_size = 10
+    total_batches = (len(new_creators) + batch_size - 1) // batch_size
+    logger.info(f"开始分批处理，每批 {batch_size} 条，共 {total_batches} 批")
+    logger.info("=" * 80)
+    
+    total_inserted = 0
+    total_failed = 0
+    all_errors = []
+    
+    for batch_idx in range(0, len(new_creators), batch_size):
+        batch = new_creators[batch_idx:batch_idx + batch_size]
+        batch_num = (batch_idx // batch_size) + 1
+        logger.info(f"处理第 {batch_num}/{total_batches} 批 (第 {batch_idx+1}-{min(batch_idx+len(batch), len(new_creators))} 条)")
+        
+        try:
+            # 1. 规范化 content_category 字段
+            logger.debug(f"  规范化 content_category 字段...")
+            for creator in batch:
+                if "content_category" in creator:
+                    category = creator["content_category"]
+                    if isinstance(category, list):
+                        creator["content_category"] = [str(c).strip() for c in category if str(c).strip()]
+                    else:
+                        parsed_categories = importer._parse_categories(category)
+                        creator["content_category"] = parsed_categories if parsed_categories else []
+                else:
+                    creator["content_category"] = []
+            
+            # 2. 并发生成 tokens（一次并发10个请求）
+            logger.info(f"  开始并发生成 tokens...")
+            processed_batch = importer._generate_tokens_batch_concurrent(batch, max_workers=10)
+            
+            # 3. 插入到 Supabase
+            logger.info(f"  开始插入到数据库...")
+            batch_result = importer.insert_to_supabase(processed_batch, batch_size=len(processed_batch))
+            
+            # 4. 更新统计
+            batch_inserted = batch_result.get("total_inserted", 0)
+            batch_failed = batch_result.get("total_failed", 0)
+            total_inserted += batch_inserted
+            total_failed += batch_failed
+            if batch_result.get("errors"):
+                all_errors.extend(batch_result["errors"])
+            
+            # 5. 更新缓存：将成功导入的 creator_id 添加到缓存
+            if batch_inserted > 0:
+                inserted_creator_ids = set()
+                for creator in processed_batch[:batch_inserted]:
+                    creator_id = creator.get("creator_id")
+                    if creator_id:
+                        creator_id_str = str(creator_id)
+                        inserted_creator_ids.add(creator_id_str)
+                        logger.debug(f"    缓存 creator_id: {creator_id_str} (Creator: {creator.get('creator_name', 'Unknown')})")
+                
+                # 更新缓存集合
+                imported_creator_ids.update(inserted_creator_ids)
+                
+                # 确保缓存目录存在
+                cache_file.parent.mkdir(parents=True, exist_ok=True)
+                
+                # 保存缓存到文件
+                try:
+                    cache_data = {
+                        "creator_ids": sorted(list(imported_creator_ids)),
+                        "last_updated": datetime.now().isoformat(),
+                        "total_count": len(imported_creator_ids),
+                        "last_import": {
+                            "inserted_count": len(inserted_creator_ids),
+                            "timestamp": datetime.now().isoformat()
+                        }
+                    }
+                    with open(cache_file, "w", encoding="utf-8") as f:
+                        json.dump(cache_data, f, ensure_ascii=False, indent=2)
+                    logger.info(f"  ✓ 第 {batch_num} 批处理完成：插入 {batch_inserted} 条，缓存已更新")
+                except Exception as e:
+                    logger.error(f"  ✗ 保存缓存失败: {str(e)}")
+                    logger.exception(e)
+            else:
+                logger.info(f"  ✓ 第 {batch_num} 批处理完成：无新插入记录")
+            
+        except Exception as e:
+            logger.error(f"  ✗ 第 {batch_num} 批处理失败: {str(e)}")
+            logger.exception(e)
+            total_failed += len(batch)
+            all_errors.append(f"批次 {batch_num} 处理失败: {str(e)}")
+            # 继续处理下一批，不中断整个流程
+            continue
+        
+        logger.info("-" * 80)
+    
+    logger.info("=" * 80)
+    logger.info("导入处理完成")
+    logger.info(f"  总解析数据: {len(creators)} 条")
+    logger.info(f"  新记录: {len(new_creators)} 条")
+    logger.info(f"  成功插入: {total_inserted} 条")
+    logger.info(f"  跳过（已导入）: {skipped_count} 条")
+    logger.info(f"  失败: {total_failed} 条")
+    if all_errors:
+        logger.info(f"  错误数量: {len(all_errors)} 个")
+    logger.info("=" * 80)
+    
+    return {
+        "status": "success",
+        "message": f"成功导入 {total_inserted} 个 Creator，跳过 {skipped_count} 个已导入的记录，失败 {total_failed} 个",
+        "total_parsed": len(creators),
+        "total_inserted": total_inserted,
+        "total_skipped": skipped_count,
+        "total_failed": total_failed,
+        "errors": all_errors[:10] if all_errors else []
+    }
 

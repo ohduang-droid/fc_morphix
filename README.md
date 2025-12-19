@@ -35,6 +35,21 @@ pip install -r requirements.txt
 uvicorn app:app --reload
 ```
 
+**注意：** 开发环境使用 `--reload` 时建议单进程运行。生产环境请使用多进程模式：
+
+```bash
+# 生产环境（启用多进程，推荐 4 个 worker）
+uvicorn app:app --host 0.0.0.0 --port 8000 --workers 4
+
+# 或者根据 CPU 核心数设置（推荐：CPU 核心数 + 1）
+uvicorn app:app --host 0.0.0.0 --port 8000 --workers $(($(nproc) + 1))
+```
+
+**并发优化说明：**
+- 代码已优化，将同步阻塞操作改为异步执行，避免阻塞事件循环
+- 使用 `--workers` 参数可以启用多进程，充分利用多核 CPU
+- 每个进程可以独立处理请求，提高并发性能
+
 The API will be available at `http://127.0.0.1:8000`. In production, the service is
 exposed behind `https://media.datail.ai/`.
 
@@ -137,3 +152,9 @@ docker run --env-file .env -p 8000:8000 fc-morphix
 ```
 
 The container entrypoint runs `uvicorn app:app --host 0.0.0.0 --port 8000`.
+
+**生产环境建议：** 在 Dockerfile 或 docker-compose.yml 中启用多进程：
+
+```dockerfile
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+```

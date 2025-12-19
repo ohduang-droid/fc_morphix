@@ -5,6 +5,7 @@ import os
 import time
 import random
 from typing import Dict, Any, Optional, Tuple, List
+from urllib.parse import urlparse
 import requests
 
 from utils.cache import load_cache, save_cache
@@ -78,10 +79,22 @@ def generate_scene_image(
     调用图片生成 API 生成场景图
     使用 image-to-image API，传入多个magnet图片URL数组
     """
+    # 规范化 API URL：移除末尾斜杠，确保路径正确
+    api_url = api_url.rstrip('/')
+    # 如果 URL 是根路径或缺少路径，自动添加 /image-to-image
+    if not api_url.endswith('/image-to-image'):
+        # 检查是否是根路径（只有域名，没有路径）
+        # 例如：https://media.datail.ai 或 https://media.datail.ai/
+        parsed = urlparse(api_url)
+        # 如果路径为空或只有根路径，添加 /image-to-image
+        if not parsed.path or parsed.path == '/':
+            api_url = f"{api_url.rstrip('/')}/image-to-image"
+        # 如果已经有其他路径但不是 /image-to-image，保持原样（可能是自定义路径）
+    
     image_tpl = [
-        "https://amzn-s3-fc-bucket.s3.sa-east-1.amazonaws.com/images/2025/12/18/60fadc420a944a4697fe9a119508ac8d.png",
-        "https://amzn-s3-fc-bucket.s3.sa-east-1.amazonaws.com/images/2025/12/18/82ce9e656b6b437e9a3277d3dae16d07.png",
-        "https://amzn-s3-fc-bucket.s3.sa-east-1.amazonaws.com/images/2025/12/18/8038c493aa194f699ae43ce435517a8c.png"
+        # "https://amzn-s3-fc-bucket.s3.sa-east-1.amazonaws.com/images/2025/12/18/60fadc420a944a4697fe9a119508ac8d.png",
+        "https://amzn-s3-fc-bucket.s3.sa-east-1.amazonaws.com/images/2025/12/18/82ce9e656b6b437e9a3277d3dae16d07.png"
+        # "https://amzn-s3-fc-bucket.s3.sa-east-1.amazonaws.com/images/2025/12/18/8038c493aa194f699ae43ce435517a8c.png"
     ]
     # 每次请求前随机取一张 image_tpl 中的地址插入 image_urls 第1个位置
     random_image = random.choice(image_tpl)
@@ -103,7 +116,7 @@ def generate_scene_image(
         print(f"          URL {idx}: {url}")
     
     try:
-        response = requests.post(api_url, json=payload, timeout=180)
+        response = requests.post(api_url, json=payload, timeout=600)  # 10分钟超时
         response.raise_for_status()
         result = response.json()
         
@@ -482,110 +495,16 @@ def execute(**kwargs) -> Dict[str, Any]:
         
         print(f"  处理 Creator {creator_id} 的场景图生成...")
         
-        # 检查缓存
+        # 检查缓存（如果缓存存在，跳过场景图生成和数据库更新）
         cached_result = None
         if use_cache:
             cached_result = load_cache(creator_id, "step_four")
             if cached_result:
-                print(f"    ✓ 使用缓存结果，跳过场景图生成")
+                print(f"    ✓ 使用缓存结果，跳过场景图生成和数据库更新")
                 cache_hits += 1
                 # 统计缓存的场景图数量
                 scene_urls = cached_result.get("scene_urls", [])
                 total_scenes_generated += len(scene_urls)
-                
-                # 即使使用缓存，也要执行 Supabase 保存
-                if scene_urls and supabase_url and supabase_api_key:
-                    # 获取三个 magnet 的 context_id 和其他字段
-                    magnet_1_context_id = None
-                    magnet_2_context_id = None
-                    magnet_3_context_id = None
-                    magnet_1_front_name = ""
-                    magnet_1_front_style_key = ""
-                    magnet_1_front_image_prompt = ""
-                    
-                    # 优先从缓存中获取
-                    if cached_result.get("magnet_1"):
-                        magnet_1_context_id = cached_result["magnet_1"].get("context_id", "")
-                        magnet_1_front_name = cached_result["magnet_1"].get("front_name", "")
-                    if cached_result.get("magnet_2"):
-                        magnet_2_context_id = cached_result["magnet_2"].get("context_id", "")
-                    if cached_result.get("magnet_3"):
-                        magnet_3_context_id = cached_result["magnet_3"].get("context_id", "")
-                    
-                    # 如果缓存中没有，或者需要补充其他字段，从 step_three_result 中获取
-                    if magnet_results and len(magnet_results) >= 3:
-                        if not magnet_1_context_id:
-                            magnet_1_context_id = magnet_results[0].get("context_id", "")
-                        if not magnet_2_context_id:
-                            magnet_2_context_id = magnet_results[1].get("context_id", "")
-                        if not magnet_3_context_id:
-                            magnet_3_context_id = magnet_results[2].get("context_id", "")
-                        if not magnet_1_front_name:
-                            magnet_1_front_name = magnet_results[0].get("front_name", "")
-                        # front_style_key 和 front_image_prompt 通常不在 step_four 缓存中，从 step_three_result 获取
-                        magnet_1_front_style_key = magnet_results[0].get("front_style_key", "")
-                        magnet_1_front_image_prompt = magnet_results[0].get("front_image_prompt", "")
-                    
-                    # 只使用第一个 magnet 的 context_id
-                    if magnet_1_context_id:
-                        scene_context_id = magnet_1_context_id
-                        cache_save_msg = f"🔄 使用缓存结果，但仍需保存场景图到 Supabase (context_id: {scene_context_id})..."
-                        print(f"    {cache_save_msg}")
-                        log_and_print(creator_id, "step_four", cache_save_msg)
-                        
-                        # 获取第一个 magnet 的 task_id（用于查询，使用第一个 magnet 的 context_id）
-                        task_id = get_task_id_from_magnet_image(
-                            creator_id=creator_id,
-                            context_id=magnet_1_context_id,
-                            supabase_url=supabase_url,
-                            supabase_api_key=supabase_api_key,
-                            step_two_result=step_two_result
-                        )
-                        
-                        if task_id:
-                            # 为每个场景图 URL 保存一条记录
-                            for scene_idx, scene_url in enumerate(scene_urls, 1):
-                                # 如果有多张场景图，使用不同的 context_id 后缀区分
-                                if len(scene_urls) > 1:
-                                    current_context_id = f"{scene_context_id}_SCENE_{scene_idx}"
-                                else:
-                                    current_context_id = scene_context_id
-                                
-                                save_success = save_scene_image_to_supabase(
-                                    creator_id=creator_id,
-                                    context_id=current_context_id,
-                                    task_id=task_id,
-                                    scene_image_url=scene_url,
-                                    supabase_url=supabase_url,
-                                    supabase_api_key=supabase_api_key,
-                                    front_name=magnet_1_front_name,
-                                    front_style_key=magnet_1_front_style_key,
-                                    front_image_prompt=magnet_1_front_image_prompt
-                                )
-                                if save_success:
-                                    success_msg = f"✓ 成功保存场景图 {scene_idx} 到 Supabase (context_id: {current_context_id}, url: {scene_url})"
-                                    print(f"      {success_msg}")
-                                    log_and_print(creator_id, "step_four", success_msg)
-                                else:
-                                    warning_msg = f"⚠️  保存场景图 {scene_idx} 到 Supabase 失败 (context_id: {current_context_id})"
-                                    print(f"      {warning_msg}")
-                                    log_and_print(creator_id, "step_four", warning_msg, "WARNING")
-                        else:
-                            warning_msg = "⚠️  无法获取 task_id，跳过 Supabase 保存"
-                            print(f"      {warning_msg}")
-                            log_and_print(creator_id, "step_four", warning_msg, "WARNING")
-                    else:
-                        warning_msg = "⚠️  无法获取第一个 magnet context_id，跳过 Supabase 保存"
-                        print(f"      {warning_msg}")
-                        log_and_print(creator_id, "step_four", warning_msg, "WARNING")
-                elif not scene_urls:
-                    warning_msg = "⚠️  缓存中没有可用的场景图 URL，跳过 Supabase 保存"
-                    print(f"      {warning_msg}")
-                    log_and_print(creator_id, "step_four", warning_msg, "WARNING")
-                elif not supabase_url or not supabase_api_key:
-                    warning_msg = "⚠️  缺少 Supabase 配置，跳过保存"
-                    print(f"      {warning_msg}")
-                    log_and_print(creator_id, "step_four", warning_msg, "WARNING")
                 
                 all_scene_results.append(cached_result)
                 continue
@@ -791,16 +710,31 @@ def execute(**kwargs) -> Dict[str, Any]:
                 "status": "success"
             }
             
-            all_scene_results.append(creator_scene_result)
+            # 检查场景图是否成功生成（scene_urls 不为空）
+            scene_generation_success = scene_urls and len(scene_urls) > 0
             
-            # 保存到缓存
-            if use_cache:
+            # 只有场景图生成成功时才保存缓存
+            if use_cache and scene_generation_success:
                 save_cache(creator_id, creator_scene_result, "step_four")
                 print(f"    ✓ 结果已保存到缓存")
+            elif use_cache and not scene_generation_success:
+                print(f"    ⚠️  场景图生成失败，跳过缓存保存")
+            
+            # 只有场景图生成成功时才添加到结果列表
+            if scene_generation_success:
+                all_scene_results.append(creator_scene_result)
+            else:
+                error_msg = "场景图生成失败（scene_urls 为空）"
+                print(f"    ❌ {error_msg}")
+                errors.append({
+                    "creator_id": creator_id,
+                    "error": error_msg
+                })
             
         except Exception as e:
             error_msg = str(e)
             print(f"    ❌ 生成场景图失败（已重试 {max_retries} 次）: {error_msg}")
+            print(f"    ⚠️  执行失败，未保存缓存")
             errors.append({
                 "creator_id": creator_id,
                 "error": error_msg

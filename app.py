@@ -4,6 +4,8 @@ import requests
 import logging
 import uuid
 import json
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import List, Optional, Dict, Any
@@ -24,7 +26,8 @@ logger = logging.getLogger(__name__)
 from imagetoimage2 import generate_images_to_s3
 from imagetovideowithextending import generate_multisegment_videos_to_s3
 from steps import step_one
-from services.excel_importer import import_creators_from_excel, ExcelImportError
+from services.excel_importer import import_creators_from_excel, import_creators_from_json, ExcelImportError
+from task_executor import TaskExecutor
 
 
 def load_env_file(path: str = ".env"):
@@ -102,6 +105,7 @@ class ImageToVideoResponse(BaseModel):
 class CreatorResponse(BaseModel):
     creators: List[Dict[str, Any]]
     count: int
+    stats: Optional[Dict[str, int]] = None
 
 
 class SendEmailRequest(BaseModel):
@@ -175,6 +179,8 @@ async def image_to_video(payload: ImageToVideoRequest):
 async def get_creators():
     """
     从 Supabase 获取所有 creator 列表
+    
+    修复：使用线程池执行同步操作，避免阻塞事件循环
     """
     try:
         supabase_url = os.getenv("SUPABASE_URL")
@@ -186,15 +192,40 @@ async def get_creators():
                 detail="缺少 Supabase 配置（SUPABASE_URL 或 SUPABASE_API_KEY 环境变量）"
             )
         
-        result = step_one.execute(
-            supabase_url=supabase_url,
-            supabase_api_key=supabase_api_key,
-            use_cache=False  # 实时从数据库获取，不使用缓存
+        # 在线程池中执行同步操作，避免阻塞事件循环
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(
+            None,
+            lambda: step_one.execute(
+                supabase_url=supabase_url,
+                supabase_api_key=supabase_api_key,
+                use_cache=False  # 实时从数据库获取，不使用缓存
+            )
         )
         
+        creators = result.get("creators", [])
+        
+        # 统计各状态的数量
+        stats = {
+            "pending": 0,      # 待生成
+            "completed": 0,    # 已完成
+            "failed": 0        # 失败
+        }
+        
+        for creator in creators:
+            status = creator.get("status", "pending")  # 默认为 pending
+            if status == "completed":
+                stats["completed"] += 1
+            elif status == "failed":
+                stats["failed"] += 1
+            else:
+                # pending, generating 或其他状态都算作 pending
+                stats["pending"] += 1
+        
         return CreatorResponse(
-            creators=result.get("creators", []),
-            count=result.get("count", 0)
+            creators=creators,
+            count=result.get("count", 0),
+            stats=stats
         )
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
@@ -231,7 +262,12 @@ async def get_creator_images(creator_id: str):
         }
         
         # 直接从 Supabase 数据库获取数据
-        response = requests.get(query_url, headers=headers, timeout=30)
+        # 使用线程池执行同步的 requests.get，避免阻塞事件循环
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(
+            None,
+            lambda: requests.get(query_url, headers=headers, timeout=300)
+        )
         response.raise_for_status()
         
         magnet_images = response.json()
@@ -287,11 +323,10 @@ async def get_creator_images(creator_id: str):
 
 
 @app.post("/api/import-creators")
-async def import_creators(file: UploadFile = File(...)):
+async def import_creators():
     """
-    从 Excel 文件导入 Creator 数据
-    Excel 列：creator_id, creator_name, region, newsletter_name, contact_email, website_url, creator_signature_image_url, platform, 订阅规模（区间）, 碎片脑模式*, content_category, 头/腰部定位, 为啥很适合 FC？（一句话）
-    注意：中文字段（订阅规模、碎片脑模式、头/腰部定位、为啥很适合 FC）不需要入库
+    从 output.json 文件导入 Creator 数据
+    导入成功的结果会写入缓存，避免多次执行时重复导入
     """
     try:
         # 获取 Supabase 配置
@@ -304,29 +339,34 @@ async def import_creators(file: UploadFile = File(...)):
                 detail="缺少 Supabase 配置（SUPABASE_URL 或 SUPABASE_API_KEY 环境变量）"
             )
         
-        # 获取 Dify 配置（可选）
-        # 优先使用 DIFY_API_KEY_TOKEN，如果没有则使用 DIFY_API_KEY（向后兼容）
-        dify_url = os.getenv("DIFY_URL")
-        dify_api_key = os.getenv("DIFY_API_KEY_TOKEN") or os.getenv("DIFY_API_KEY")
-        dify_user = os.getenv("DIFY_USER", "excel-importer")
+        # 获取 output.json 文件路径
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        json_file_path = os.path.join(script_dir, "json", "creator", "output.json")
         
-        # 读取文件内容
-        if not file.filename:
+        # 检查文件是否存在
+        if not os.path.exists(json_file_path):
             raise HTTPException(
-                status_code=400,
-                detail="未提供文件名"
+                status_code=404,
+                detail=f"文件不存在: {json_file_path}"
             )
         
-        contents = await file.read()
+        # 调用 JSON 导入服务
+        # 获取 Dify 配置（可选）
+        dify_url = os.getenv("DIFY_URL")
+        dify_user = os.getenv("DIFY_USER", "excel-importer")
         
-        # 调用 Excel 导入服务
-        result = import_creators_from_excel(
-            file_contents=contents,
-            filename=file.filename,
+        # 获取 S3 配置（可选）
+        s3_bucket = os.getenv("S3_BUCKET") or os.getenv("S3_BUCKET_NAME")
+        s3_key_prefix = os.getenv("S3_CREATOR_PREFIX")
+        
+        result = import_creators_from_json(
+            json_file_path=json_file_path,
             supabase_url=supabase_url,
             supabase_api_key=supabase_api_key,
             dify_url=dify_url,
-            dify_user=dify_user
+            dify_user=dify_user,
+            s3_bucket=s3_bucket,
+            s3_key_prefix=s3_key_prefix
         )
         
         return result
@@ -394,12 +434,17 @@ async def send_email(payload: SendEmailRequest):
         msg.attach(MIMEText(body_html, 'html', 'utf-8'))
         
         # 发送邮件
+        # 使用线程池执行同步的 SMTP 操作，避免阻塞事件循环
         try:
-            server = smtplib.SMTP(smtp_host, smtp_port)
-            server.starttls()
-            server.login(smtp_user, smtp_password)
-            server.send_message(msg)
-            server.quit()
+            def send_email_sync():
+                server = smtplib.SMTP(smtp_host, smtp_port)
+                server.starttls()
+                server.login(smtp_user, smtp_password)
+                server.send_message(msg)
+                server.quit()
+            
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(None, send_email_sync)
             
             return {
                 "status": "success",
@@ -421,6 +466,75 @@ async def send_email(payload: SendEmailRequest):
         raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.post("/api/creators/{creator_id}/generate")
+async def generate_creator(creator_id: str):
+    """
+    为指定的 Creator 执行生成任务（步骤 1-4）
+    注意：此操作可能需要较长时间（几分钟），请耐心等待
+    
+    重要：此接口不使用任何缓存，所有步骤（1-4）都会完全重新执行
+    - 步骤1：从 Supabase 重新获取 Creator 信息
+    - 步骤2：重新调用 Dify API 生成 prompt
+    - 步骤3：重新生成所有 magnet 图片
+    - 步骤4：重新生成场景图
+    
+    修复：使用线程池执行同步操作，避免阻塞事件循环
+    """
+    try:
+        # 获取 Supabase 配置
+        supabase_url = os.getenv("SUPABASE_URL")
+        supabase_api_key = os.getenv("SUPABASE_API_KEY")
+        
+        if not supabase_url or not supabase_api_key:
+            raise HTTPException(
+                status_code=500,
+                detail="缺少 Supabase 配置（SUPABASE_URL 或 SUPABASE_API_KEY 环境变量）"
+            )
+        
+        logger.info(f"开始为 Creator {creator_id} 执行生成任务")
+        
+        # 在线程池中执行同步操作，避免阻塞事件循环
+        loop = asyncio.get_event_loop()
+        # 使用线程池执行同步的 TaskExecutor
+        # 重要：设置 use_cache=False，确保步骤1-4完全重新执行，不使用任何缓存
+        result = await loop.run_in_executor(
+            None,  # 使用默认线程池
+            lambda: TaskExecutor().execute_all_steps(
+                creator_id=creator_id,
+                max_workers=1,  # 单个 Creator 使用单线程
+                supabase_url=supabase_url,
+                supabase_api_key=supabase_api_key,
+                use_cache=False  # 禁用缓存，完全重新执行所有步骤
+            )
+        )
+        
+        if result["status"] == "success":
+            logger.info(f"Creator {creator_id} 生成任务完成")
+            return {
+                "status": "success",
+                "message": f"Creator {creator_id} 生成完成",
+                "creator_id": creator_id,
+                "result": result
+            }
+        else:
+            error_msg = result.get("error", "生成失败")
+            logger.error(f"Creator {creator_id} 生成任务失败: {error_msg}")
+            raise HTTPException(
+                status_code=500,
+                detail=error_msg
+            )
+            
+    except HTTPException:
+        raise
+    except Exception as exc:
+        import traceback
+        error_detail = f"生成失败: {str(exc)}"
+        logger.error(f"Creator {creator_id} 生成任务异常: {error_detail}")
+        if os.getenv("DEBUG", "false").lower() == "true":
+            error_detail += f"\n{traceback.format_exc()}"
+        raise HTTPException(status_code=500, detail=error_detail) from exc
 
 
 @app.get("/", response_class=HTMLResponse)

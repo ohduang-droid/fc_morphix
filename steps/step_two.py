@@ -164,28 +164,36 @@ def update_creator_outreach_email_body(
     creator_id: Any,
     outlook_text: str,
     supabase_url: str,
-    supabase_api_key: str
+    supabase_api_key: str,
+    message_text: Optional[str] = None
 ) -> bool:
     """
-    更新 Supabase creator 表的 outreach_email_body 字段
-    从 dify_response.outlook 字段提取内容，清理 markdown 代码块标记后写入
+    更新 Supabase creator 表的 outreach_email_body 和 message 字段
+    从 dify_response.outlook 和 dify_response.message 字段提取内容，清理 markdown 代码块标记后写入
     """
-    # 清理 markdown 代码块标记
-    cleaned_text = outlook_text.strip()
-    # 移除开头的 ``` 和可能的语言标识符（如 ```markdown, ```text 等）
-    if cleaned_text.startswith("```"):
-        # 找到第一个换行符
-        first_newline = cleaned_text.find("\n")
-        if first_newline != -1:
-            cleaned_text = cleaned_text[first_newline + 1:]
-        else:
-            # 如果没有换行符，直接移除开头的 ```
-            cleaned_text = cleaned_text[3:]
-    # 移除结尾的 ```
-    if cleaned_text.endswith("```"):
-        cleaned_text = cleaned_text[:-3].rstrip()
-    # 再次清理首尾空白
-    cleaned_text = cleaned_text.strip()
+    def clean_markdown(text: str) -> str:
+        """清理 markdown 代码块标记"""
+        cleaned = text.strip()
+        # 移除开头的 ``` 和可能的语言标识符（如 ```markdown, ```text 等）
+        if cleaned.startswith("```"):
+            # 找到第一个换行符
+            first_newline = cleaned.find("\n")
+            if first_newline != -1:
+                cleaned = cleaned[first_newline + 1:]
+            else:
+                # 如果没有换行符，直接移除开头的 ```
+                cleaned = cleaned[3:]
+        # 移除结尾的 ```
+        if cleaned.endswith("```"):
+            cleaned = cleaned[:-3].rstrip()
+        # 再次清理首尾空白
+        return cleaned.strip()
+    
+    # 清理 outlook 文本
+    cleaned_outlook = clean_markdown(outlook_text) if outlook_text else ""
+    
+    # 清理 message 文本（如果提供）
+    cleaned_message = clean_markdown(message_text) if message_text else None
     
     api_url = f"{supabase_url.rstrip('/')}/rest/v1/creator"
     update_url = f"{api_url}?creator_id=eq.{creator_id}"
@@ -197,9 +205,14 @@ def update_creator_outreach_email_body(
         "Prefer": "return=representation"
     }
     
+    # 构建 payload，同时更新 outreach_email_body 和 message
     payload = {
-        "outreach_email_body": cleaned_text
+        "outreach_email_body": cleaned_outlook
     }
+    
+    # 如果提供了 message_text，则同时更新 message 字段
+    if cleaned_message is not None:
+        payload["message"] = cleaned_message
     
     try:
         response = requests.patch(update_url, headers=headers, json=payload, timeout=30)
@@ -215,7 +228,7 @@ def update_creator_outreach_email_body(
             except:
                 error_detail += f": {e.response.text[:200]}"
         # 注意：这里不记录日志，因为 creator_id 可能还未确定
-        print(f"        ⚠️  更新 Supabase creator.outreach_email_body 失败: {error_detail}")
+        print(f"        ⚠️  更新 Supabase creator.outreach_email_body 和 message 失败: {error_detail}")
         return False
 
 
@@ -560,12 +573,14 @@ def execute(**kwargs) -> Dict[str, Any]:
             print(f"  处理 Creator {i}/{len(creators)} (creator_id: {creator_id})...")
             
             # 检查是否使用缓存
+            is_from_cache = False
             if use_cache:
                 cached_result = load_cache(creator_id, "step_two")
                 if cached_result:
-                    print(f"    ✓ 使用缓存结果，跳过 Dify API 调用")
+                    print(f"    ✓ 使用缓存结果，跳过 Dify API 调用和数据库更新")
                     result = cached_result
                     cache_hits += 1
+                    is_from_cache = True
                 else:
                     result = call_dify_api_and_save(
                         creator,
@@ -605,12 +620,14 @@ def execute(**kwargs) -> Dict[str, Any]:
             else:
                 print(f"    ✓ 成功保存 {saved_count}/{magnet_count} 个 magnet")
             
-            # 更新 creator 表的 outreach_email_body 字段
-            if supabase_url and supabase_api_key:
+            # 更新 creator 表的 outreach_email_body 和 message 字段
+            # 如果使用缓存，跳过数据库更新
+            if not is_from_cache and supabase_url and supabase_api_key:
                 dify_response = result.get("dify_response", {})
                 outlook_text = dify_response.get("outlook", "")
+                message_text = dify_response.get("message", "")
                 if outlook_text:
-                    update_msg = "🔄 更新 creator 表的 outreach_email_body 字段..."
+                    update_msg = "🔄 更新 creator 表的 outreach_email_body 和 message 字段..."
                     print(f"    {update_msg}")
                     log_and_print(creator_id, "step_two", update_msg)
                     
@@ -618,20 +635,23 @@ def execute(**kwargs) -> Dict[str, Any]:
                         creator_id,
                         outlook_text,
                         supabase_url,
-                        supabase_api_key
+                        supabase_api_key,
+                        message_text=message_text if message_text else None
                     )
                     if update_success:
-                        success_msg = "✓ 成功更新 creator.outreach_email_body"
+                        success_msg = "✓ 成功更新 creator.outreach_email_body 和 message"
                         print(f"        {success_msg}")
                         log_and_print(creator_id, "step_two", success_msg)
                     else:
-                        warning_msg = "⚠️  更新 creator.outreach_email_body 失败"
+                        warning_msg = "⚠️  更新 creator.outreach_email_body 和 message 失败"
                         print(f"        {warning_msg}")
                         log_and_print(creator_id, "step_two", warning_msg, "WARNING")
                 else:
                     warning_msg = "⚠️  dify_response.outlook 字段为空，跳过更新"
                     print(f"        {warning_msg}")
                     log_and_print(creator_id, "step_two", warning_msg, "WARNING")
+            elif is_from_cache:
+                print(f"    ℹ️  使用缓存结果，跳过数据库更新")
         except Exception as e:
             error_info = {
                 "creator": creator,

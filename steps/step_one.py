@@ -65,17 +65,30 @@ def execute(**kwargs) -> Dict[str, Any]:
         
         creators: List[Dict[str, Any]] = response.json()
         
-        # 按 creator_id 正序排序
-        def get_creator_id_for_sort(creator: Dict[str, Any]) -> Any:
-            """获取用于排序的 creator_id，优先使用 creator_id，其次使用 id"""
-            creator_id = creator.get("creator_id") or creator.get("id")
-            # 尝试转换为数字进行排序，如果失败则按字符串排序
+        # 按 paid_subscribers_est 和 free_subscribers_est 降序排序
+        def get_sort_key(creator: Dict[str, Any]) -> tuple:
+            """获取用于排序的键值
+            优先级：paid_subscribers_est（降序） > free_subscribers_est（降序）
+            使用负数实现降序排序
+            """
+            # 获取付费订阅者数量，如果不存在或无效则视为0
+            paid_subscribers = creator.get("paid_subscribers_est")
             try:
-                return int(creator_id) if creator_id is not None else 0
+                paid_value = float(paid_subscribers) if paid_subscribers is not None else 0.0
             except (ValueError, TypeError):
-                return str(creator_id) if creator_id is not None else ""
+                paid_value = 0.0
+            
+            # 获取免费订阅者数量，如果不存在或无效则视为0
+            free_subscribers = creator.get("free_subscribers_est")
+            try:
+                free_value = float(free_subscribers) if free_subscribers is not None else 0.0
+            except (ValueError, TypeError):
+                free_value = 0.0
+            
+            # 返回负数以实现降序排序（Python的sort是升序，负数可以实现降序）
+            return (-paid_value, -free_value)
         
-        creators.sort(key=get_creator_id_for_sort)
+        creators.sort(key=get_sort_key)
         
         result = {
             "step": 1,
