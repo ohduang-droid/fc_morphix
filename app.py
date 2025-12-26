@@ -5,12 +5,14 @@ import logging
 import uuid
 import json
 import asyncio
+import boto3
 from concurrent.futures import ThreadPoolExecutor
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import List, Optional, Dict, Any
+from datetime import datetime
 
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -113,6 +115,13 @@ class SendEmailRequest(BaseModel):
     to_email: str
     subject: Optional[str] = None
     body: str
+
+
+class CreateCreatorResponse(BaseModel):
+    status: str
+    message: str
+    creator_id: str
+    creator: Dict[str, Any]
 
 
 app = FastAPI(title="FC Morphix API", version="1.0.0")
@@ -311,6 +320,226 @@ async def get_creators(
         ) from e
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@app.post("/api/creators", response_model=CreateCreatorResponse)
+async def create_creator(
+    creator_name: str = Form(...),
+    handle: str = Form(...),
+    website_url: str = Form(...),
+    logo: UploadFile = File(...),
+    content_category: Optional[str] = Form(None),
+    creator_tokens_direct: Optional[str] = Form(None)
+):
+    """
+    创建新的 Creator
+    
+    表单参数:
+    - creator_name: Creator 名称（必填）
+    - handle: Slug/Handle（必填，用于生成 Pitch Site）
+    - website_url: 网站 URL（必填）
+    - logo: Logo 图片文件（必填）
+    - content_category: 分类（可选，JSON 数组字符串，如 '["Tech", "AI"]'）
+    - creator_id: Creator ID（可选，纯数字。如果未提供将自动生成 6 位数字 ID）
+    - creator_tokens_direct: Image With [] Tokens (可选，JSON 数组字符串或逗号分隔字符串)
+    """
+    try:
+        supabase_url = os.getenv("SUPABASE_URL")
+        supabase_api_key = os.getenv("SUPABASE_API_KEY")
+        s3_bucket = os.getenv("S3_BUCKET") or os.getenv("S3_BUCKET_NAME")
+        
+        if not supabase_url or not supabase_api_key:
+            raise HTTPException(
+                status_code=500,
+                detail="缺少 Supabase 配置（SUPABASE_URL 或 SUPABASE_API_KEY 环境变量）"
+            )
+        
+        if not s3_bucket:
+            raise HTTPException(
+                status_code=500,
+                detail="缺少 S3 配置（S3_BUCKET 或 S3_BUCKET_NAME 环境变量）"
+            )
+        
+        # 验证 logo 文件类型
+        if not logo.content_type or not logo.content_type.startswith("image/"):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Logo 必须是图片文件，当前类型: {logo.content_type}"
+            )
+            
+        # 自动生成唯一的 Creator ID
+        import random
+        final_creator_id = ""
+        max_retries = 10
+        retry_count = 0
+        
+        # 准备 Supabase 查询 API
+        check_api_url = f"{supabase_url.rstrip('/')}/rest/v1/creator"
+        headers = {
+            "apikey": supabase_api_key,
+            "Authorization": f"Bearer {supabase_api_key}",
+            "Content-Type": "application/json"
+        }
+        loop = asyncio.get_event_loop()
+        
+        while retry_count < max_retries:
+            # 生成 100000 - 999999 之间的随机数
+            generated_id = str(random.randint(100000, 999999))
+            
+            # 检查 ID 是否存在 (使用 HEAD 请求或者 GET + select=creator_id + limit=1)
+            # 这里的查询类似: GET /creator?creator_id=eq.123456&select=creator_id&limit=1
+            query_params = {
+                "creator_id": f"eq.{generated_id}",
+                "select": "creator_id",
+                "limit": "1"
+            }
+            
+            try:
+                check_response = await loop.run_in_executor(
+                    None,
+                    lambda: requests.get(check_api_url, headers=headers, params=query_params, timeout=10)
+                )
+                
+                if check_response.ok:
+                    existing = check_response.json()
+                    if not existing:
+                        # 不存在，可以使用
+                        final_creator_id = generated_id
+                        break
+                    else:
+                        logger.warning(f"生成的 ID {generated_id} 已存在，正在重试...")
+                else:
+                    # 如果查询失败（非 409/冲突，而是系统错误），记录日志但尝试继续（或抛出异常）
+                    logger.warning(f"检查 ID {generated_id} 失败: {check_response.status_code}")
+            except Exception as e:
+                logger.error(f"检查 ID 唯一性时发生异常: {str(e)}")
+            
+            retry_count += 1
+            
+        if not final_creator_id:
+            raise HTTPException(
+                status_code=500,
+                detail="无法生成唯一的 Creator ID，请稍后重试"
+            )
+        
+        # 读取 logo 文件内容
+        logo_content = await logo.read()
+        
+        # 上传 logo 到 S3
+        try:
+            s3_client = boto3.client('s3')
+            
+            # 获取文件扩展名
+            file_extension = logo.filename.split('.')[-1] if '.' in logo.filename else 'png'
+            # 使用 final_creator_id 作为文件名的一部分
+            s3_key = f"creatorAvator/{final_creator_id}.{file_extension}"
+            
+            # 上传文件
+            s3_client.put_object(
+                Bucket=s3_bucket,
+                Key=s3_key,
+                Body=logo_content,
+                ContentType=logo.content_type,
+                ACL='public-read'
+            )
+            
+            # 构建公网 URL
+            logo_url = f"https://{s3_bucket}.s3.amazonaws.com/{s3_key}"
+            logger.info(f"Logo 已上传到 S3: {logo_url}")
+            
+        except Exception as e:
+            logger.error(f"上传 logo 到 S3 失败: {str(e)}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"上传 logo 失败: {str(e)}"
+            )
+        
+        # 解析分类
+        categories = []
+        if content_category:
+            try:
+                categories = json.loads(content_category)
+                if not isinstance(categories, list):
+                    categories = [categories]
+            except json.JSONDecodeError:
+                # 如果不是 JSON，尝试按逗号分割
+                categories = [cat.strip() for cat in content_category.split(',') if cat.strip()]
+                
+        # 解析 creator_tokens_direct
+        tokens_direct = []
+        if creator_tokens_direct:
+            try:
+                tokens_direct = json.loads(creator_tokens_direct)
+                if not isinstance(tokens_direct, list):
+                    tokens_direct = [tokens_direct]
+            except json.JSONDecodeError:
+                # 如果不是 JSON，尝试按逗号分割
+                tokens_direct = [t.strip() for t in creator_tokens_direct.split(',') if t.strip()]
+        
+        # 构建 creator 数据
+        creator_data = {
+            "creator_id": final_creator_id,
+            "creator_name": creator_name,
+            "handle": handle,
+            "website_url": website_url,
+            "creator_signature_image_url": logo_url,
+            "newsletter_name": creator_name,  # 使用 creator_name 作为默认值
+            "platform": "substack",  # 默认平台
+            "status": "pending",  # 初始状态
+            "is_substack": 0,  # 默认未发送
+            "content_category": categories,
+            "creator_tokens_direct": tokens_direct,
+            "created_at": datetime.utcnow().isoformat()
+        }
+        
+        # 插入到 Supabase
+        api_url = f"{supabase_url.rstrip('/')}/rest/v1/creator"
+        headers = {
+            "apikey": supabase_api_key,
+            "Authorization": f"Bearer {supabase_api_key}",
+            "Content-Type": "application/json",
+            "Prefer": "return=representation"
+        }
+        
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(
+            None,
+            lambda: requests.post(api_url, headers=headers, json=creator_data, timeout=30)
+        )
+        
+        if not response.ok:
+            error_detail = f"HTTP {response.status_code}: {response.text[:200]}"
+            logger.error(f"插入 Supabase 失败: {error_detail}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"保存到数据库失败: {error_detail}"
+            )
+        
+        created_creator = response.json()
+        if isinstance(created_creator, list) and len(created_creator) > 0:
+            created_creator = created_creator[0]
+        
+        logger.info(f"成功创建 Creator: {final_creator_id} - {creator_name}")
+        
+        return CreateCreatorResponse(
+            status="success",
+            message=f"成功创建 Creator: {creator_name}",
+            creator_id=final_creator_id,
+            creator=created_creator
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as exc:
+        import traceback
+        error_detail = f"创建 Creator 失败: {str(exc)}"
+        logger.error(f"创建 Creator 异常: {error_detail}")
+        if os.getenv("DEBUG", "false").lower() == "true":
+            error_detail += f"\n{traceback.format_exc()}"
+        raise HTTPException(status_code=500, detail=error_detail) from exc
+
+
+
 
 
 @app.get("/api/creators/{creator_id}/images")

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
@@ -83,9 +84,20 @@
         }
 
         @keyframes dots {
-            0%, 20% { content: '.'; }
-            40% { content: '..'; }
-            60%, 100% { content: '...'; }
+
+            0%,
+            20% {
+                content: '.';
+            }
+
+            40% {
+                content: '..';
+            }
+
+            60%,
+            100% {
+                content: '...';
+            }
         }
 
         /* 遮罩层 loading */
@@ -128,8 +140,13 @@
         }
 
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
 
         .loading-overlay-text {
@@ -274,7 +291,7 @@
 
         /* 当图片加载成功时，隐藏后备文字 */
         .creator-avatar:has(img.loaded) .avatar-fallback,
-        .creator-avatar img.loaded + .avatar-fallback {
+        .creator-avatar img.loaded+.avatar-fallback {
             display: none !important;
         }
 
@@ -532,6 +549,101 @@
             transform: scale(0.95);
         }
 
+        .add-creator-btn {
+            position: fixed;
+            bottom: 2rem;
+            right: 14rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            font-size: 1.5rem;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            transition: transform 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .add-creator-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.5);
+        }
+
+        .add-creator-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Add Creator Form Styles */
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .form-label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .form-label.required::after {
+            content: ' *';
+            color: #dc2626;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.2s;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Microsoft YaHei', sans-serif;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-input.error {
+            border-color: #dc2626;
+        }
+
+        .form-error {
+            color: #dc2626;
+            font-size: 0.85rem;
+            margin-top: 0.25rem;
+            display: none;
+        }
+
+        .form-error.show {
+            display: block;
+        }
+
+        .form-select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .form-select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
         .file-input {
             display: none;
         }
@@ -683,8 +795,13 @@
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
         }
 
         .modal-content {
@@ -703,6 +820,7 @@
                 transform: translateY(20px);
                 opacity: 0;
             }
+
             to {
                 transform: translateY(0);
                 opacity: 1;
@@ -1090,6 +1208,11 @@
                 bottom: 12rem;
             }
 
+            .add-creator-btn {
+                right: 1rem;
+                bottom: 17rem;
+            }
+
             .refresh-btn {
                 right: 1rem;
                 bottom: 2rem;
@@ -1321,6 +1444,7 @@
         }
     </style>
 </head>
+
 <body>
     <!-- 登录界面 -->
     <div id="loginContainer" class="login-container">
@@ -1330,14 +1454,8 @@
             <form class="login-form" onsubmit="handleLogin(event)">
                 <div class="login-input-group">
                     <label class="login-label" for="passwordInput">访问密码</label>
-                    <input 
-                        type="password" 
-                        id="passwordInput" 
-                        class="login-input" 
-                        placeholder="请输入访问密码"
-                        required
-                        autocomplete="off"
-                    >
+                    <input type="password" id="passwordInput" class="login-input" placeholder="请输入访问密码" required
+                        autocomplete="off">
                 </div>
                 <div id="loginError" class="login-error"></div>
                 <button type="submit" class="login-btn">登录</button>
@@ -1347,159 +1465,241 @@
 
     <!-- 主内容区域 -->
     <div id="mainContent" class="main-content">
-    <div class="container">
-        <div class="header">
-            <h1>Creator 列表</h1>
-            <p>Supabase Creator 信息管理</p>
+        <div class="container">
+            <div class="header">
+                <h1>Creator 列表</h1>
+                <p>Supabase Creator 信息管理</p>
+            </div>
+
+            <div id="stats" class="stats" style="display: none;">
+                <div class="stat-card">
+                    <div class="number" id="total-count">0</div>
+                    <div class="label">总 Creator 数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="number" id="pending-count">0</div>
+                    <div class="label">待生成</div>
+                </div>
+                <div class="stat-card">
+                    <div class="number" id="completed-count">0</div>
+                    <div class="label">已完成</div>
+                </div>
+                <div class="stat-card">
+                    <div class="number" id="failed-count">0</div>
+                    <div class="label">失败</div>
+                </div>
+            </div>
+
+            <div id="filters" class="filters" style="display: none;">
+                <div class="filter-group">
+                    <select id="categoryFilter" class="filter-select">
+                        <option value="">全部</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <select id="statusFilter" class="filter-select">
+                        <option value="">全部</option>
+                        <option value="pending">待生成</option>
+                        <option value="generating">生成中</option>
+                        <option value="completed">已完成</option>
+                        <option value="failed">失败</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <select id="isSubstackFilter" class="filter-select">
+                        <option value="">全部</option>
+                        <option value="1">已发送</option>
+                        <option value="0">未发送</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <select id="sortFilter" class="filter-select">
+                        <option value="default">默认排序</option>
+                        <option value="created_at_desc">创建时间</option>
+                        <option value="updated_at_desc">修改时间</option>
+                    </select>
+                </div>
+                <div class="filter-actions">
+                    <button class="filter-btn filter-btn-clear" onclick="clearFilters()">清除</button>
+                    <button class="filter-btn filter-btn-apply" type="button" onclick="applyFilters()">应用筛选</button>
+                </div>
+            </div>
+
+            <div id="loading" class="loading">加载中</div>
+            <div id="error" class="error" style="display: none;"></div>
+            <div id="creators-grid" class="creators-grid" style="display: none;"></div>
+            <div id="pagination" class="pagination" style="display: none;"></div>
+            <div id="empty-state" class="empty-state" style="display: none;">
+                暂无 Creator 数据
+            </div>
         </div>
 
-        <div id="stats" class="stats" style="display: none;">
-            <div class="stat-card">
-                <div class="number" id="total-count">0</div>
-                <div class="label">总 Creator 数</div>
-            </div>
-            <div class="stat-card">
-                <div class="number" id="pending-count">0</div>
-                <div class="label">待生成</div>
-            </div>
-            <div class="stat-card">
-                <div class="number" id="completed-count">0</div>
-                <div class="label">已完成</div>
-            </div>
-            <div class="stat-card">
-                <div class="number" id="failed-count">0</div>
-                <div class="label">失败</div>
+        <button class="refresh-btn" onclick="loadCreators(true)" title="刷新">↻</button>
+        <button class="import-btn" onclick="document.getElementById('excelFileInput').click()"
+            title="导入 Excel">📥</button>
+        <button class="import-json-btn" onclick="importFromJson()" title="从内部 JSON 文件导入"
+            style="display: none;">📄</button>
+        <button class="add-creator-btn" onclick="showAddCreatorModal()" title="添加 Creator">+</button>
+        <input type="file" id="excelFileInput" class="file-input" accept=".xlsx,.xls"
+            onchange="handleFileSelect(event)">
+
+
+        <!-- 图片查看模态框 -->
+        <div id="imageModal" class="image-modal">
+            <div class="image-modal-content">
+                <button class="image-close" onclick="closeImageModal()">&times;</button>
+                <div id="imageLoading" class="image-loading" style="display: none;">加载中...</div>
+                <div id="imageContainer" class="image-container" style="display: none;">
+                    <button class="image-nav prev" onclick="previousImage()" id="prevBtn">‹</button>
+                    <img id="modalImage" src="" alt="Magnet Image">
+                    <button class="image-nav next" onclick="nextImage()" id="nextBtn">›</button>
+                </div>
+                <div id="imageInfo" class="image-info" style="display: none;">
+                    <div id="imageName"></div>
+                    <div class="image-counter" id="imageCounter"></div>
+                </div>
             </div>
         </div>
 
-        <div id="filters" class="filters" style="display: none;">
-            <div class="filter-group">
-                <select id="categoryFilter" class="filter-select">
-                    <option value="">全部</option>
-                </select>
-            </div>
-            <div class="filter-group">
-                <select id="statusFilter" class="filter-select">
-                    <option value="">全部</option>
-                    <option value="pending">待生成</option>
-                    <option value="generating">生成中</option>
-                    <option value="completed">已完成</option>
-                    <option value="failed">失败</option>
-                </select>
-            </div>
-            <div class="filter-group">
-                <select id="isSubstackFilter" class="filter-select">
-                    <option value="">全部</option>
-                    <option value="1">已发送</option>
-                    <option value="0">未发送</option>
-                </select>
-            </div>
-            <div class="filter-actions">
-                <button class="filter-btn filter-btn-clear" onclick="clearFilters()">清除</button>
-                <button class="filter-btn filter-btn-apply" type="button" onclick="applyFilters()">应用筛选</button>
-            </div>
-        </div>
-
-        <div id="loading" class="loading">加载中</div>
-        <div id="error" class="error" style="display: none;"></div>
-        <div id="creators-grid" class="creators-grid" style="display: none;"></div>
-        <div id="pagination" class="pagination" style="display: none;"></div>
-        <div id="empty-state" class="empty-state" style="display: none;">
-            暂无 Creator 数据
-        </div>
-    </div>
-
-    <button class="refresh-btn" onclick="loadCreators(true)" title="刷新">↻</button>
-    <button class="import-btn" onclick="document.getElementById('excelFileInput').click()" title="导入 Excel">📥</button>
-    <button class="import-json-btn" onclick="importFromJson()" title="从内部 JSON 文件导入" style="display: none;">📄</button>
-    <input type="file" id="excelFileInput" class="file-input" accept=".xlsx,.xls" onchange="handleFileSelect(event)">
-
-    <!-- 图片查看模态框 -->
-    <div id="imageModal" class="image-modal">
-        <div class="image-modal-content">
-            <button class="image-close" onclick="closeImageModal()">&times;</button>
-            <div id="imageLoading" class="image-loading" style="display: none;">加载中...</div>
-            <div id="imageContainer" class="image-container" style="display: none;">
-                <button class="image-nav prev" onclick="previousImage()" id="prevBtn">‹</button>
-                <img id="modalImage" src="" alt="Magnet Image">
-                <button class="image-nav next" onclick="nextImage()" id="nextBtn">›</button>
-            </div>
-            <div id="imageInfo" class="image-info" style="display: none;">
-                <div id="imageName"></div>
-                <div class="image-counter" id="imageCounter"></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 导入结果模态框 -->
-    <div id="importModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>导入 Excel</h2>
-                <button class="modal-close" onclick="closeImportModal()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div id="importProgress" class="import-progress">
-                    <div>正在上传文件...</div>
-                    <div class="progress-bar">
-                        <div class="progress-fill" id="progressFill"></div>
+        <!-- 导入结果模态框 -->
+        <div id="importModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>导入 Excel</h2>
+                    <button class="modal-close" onclick="closeImportModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div id="importProgress" class="import-progress">
+                        <div>正在上传文件...</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFill"></div>
+                        </div>
+                    </div>
+                    <div id="importResult" class="import-result"></div>
+                    <div class="modal-actions">
+                        <button class="btn btn-secondary" onclick="closeImportModal()">关闭</button>
                     </div>
                 </div>
-                <div id="importResult" class="import-result"></div>
-                <div class="modal-actions">
-                    <button class="btn btn-secondary" onclick="closeImportModal()">关闭</button>
-                </div>
             </div>
         </div>
-    </div>
 
-    <!-- 邮件模态框 -->
-    <div id="emailModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Message Content</h2>
-                <button class="modal-close" onclick="closeEmailModal()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div id="successMessage" class="success-message"></div>
-                <div id="messagePreviewContainer">
-                    <div class="email-preview-header">
-                        <span class="email-preview-title">Message</span>
-                        <button id="copyMessageBtn" class="copy-btn" onclick="copyMessageFromPreview(event)" title="复制 Message">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                            </svg>
-                        </button>
-                    </div>
-                    <div id="messagePreview" class="email-preview empty">暂无 Message 内容</div>
+        <!-- 邮件模态框 -->
+        <div id="emailModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Message Content</h2>
+                    <button class="modal-close" onclick="closeEmailModal()">&times;</button>
                 </div>
-                <div id="emailInfo" class="email-info"></div>
-                <div id="emailPreviewContainer">
-                    <div class="email-preview-header">
-                        <span class="email-preview-title">Content</span>
-                        <button id="copyEmailBodyBtn" class="copy-btn" onclick="copyEmailBody(event)" title="复制邮件正文">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                            </svg>
-                        </button>
+                <div class="modal-body">
+                    <div id="successMessage" class="success-message"></div>
+                    <div id="messagePreviewContainer">
+                        <div class="email-preview-header">
+                            <span class="email-preview-title">Message</span>
+                            <button id="copyMessageBtn" class="copy-btn" onclick="copyMessageFromPreview(event)"
+                                title="复制 Message">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div id="messagePreview" class="email-preview empty">暂无 Message 内容</div>
                     </div>
-                    <div id="emailPreview" class="email-preview empty">暂无邮件内容</div>
-                </div>
-                <div class="modal-actions">
-                    <button class="btn btn-secondary" onclick="closeEmailModal()">关闭</button>
-                    <button id="sendEmailBtn" class="btn btn-primary" onclick="sendEmail()">发送邮件</button>
+                    <div id="emailInfo" class="email-info"></div>
+                    <div id="emailPreviewContainer">
+                        <div class="email-preview-header">
+                            <span class="email-preview-title">Content</span>
+                            <button id="copyEmailBodyBtn" class="copy-btn" onclick="copyEmailBody(event)"
+                                title="复制邮件正文">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div id="emailPreview" class="email-preview empty">暂无邮件内容</div>
+                    </div>
+                    <div class="modal-actions">
+                        <button class="btn btn-secondary" onclick="closeEmailModal()">关闭</button>
+                        <button id="sendEmailBtn" class="btn btn-primary" onclick="sendEmail()">发送邮件</button>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- 遮罩层 loading -->
-    <div id="loadingOverlay" class="loading-overlay">
-        <div class="loading-overlay-content">
-            <div class="loading-overlay-spinner"></div>
-            <div class="loading-overlay-text" id="loadingOverlayText">加载中...            </div>
+        <!-- Add Creator 模态框 -->
+        <div id="addCreatorModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>添加新 Creator</h2>
+                    <button class="modal-close" onclick="closeAddCreatorModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="addCreatorForm" onsubmit="handleAddCreatorSubmit(event)">
+                        <div class="form-group">
+                            <label class="form-label required" for="creatorName">Creator 名称</label>
+                            <input type="text" id="creatorName" class="form-input" required>
+                            <div class="form-error" id="creatorNameError"></div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label required" for="creatorHandle">Handle (Slug)</label>
+                            <input type="text" id="creatorHandle" class="form-input" required pattern="[a-zA-Z0-9_-]+"
+                                title="只能包含字母、数字、下划线和连字符">
+                            <div class="form-error" id="creatorHandleError"></div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label required" for="creatorWebsite">Website URL</label>
+                            <input type="url" id="creatorWebsite" class="form-input" required
+                                placeholder="https://example.com">
+                            <div class="form-error" id="creatorWebsiteError"></div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label required" for="creatorLogo">Logo (图片)</label>
+                            <input type="file" id="creatorLogo" class="form-input" required
+                                accept="image/png,image/jpeg,image/jpg,image/webp">
+                            <div class="form-error" id="creatorLogoError"></div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="creatorCategory">分类</label>
+                            <select id="creatorCategory" class="form-select" multiple size="5">
+                                <!-- Categories will be populated dynamically -->
+                            </select>
+                            <div style="font-size: 0.85rem; color: #666; margin-top: 0.25rem;">
+                                按住 Ctrl/Cmd 可多选
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="creatorTokensDirect">Image With [] (Tokens)</label>
+                            <input type="text" id="creatorTokensDirect" class="form-input"
+                                placeholder="例如: white background, minimalism (逗号分隔)">
+                            <div style="font-size: 0.85rem; color: #666; margin-top: 0.25rem;">
+                                将保存为 JSON 数组格式
+                            </div>
+                        </div>
+
+                        <div class="modal-actions">
+                            <button type="button" class="btn btn-secondary" onclick="closeAddCreatorModal()">取消</button>
+                            <button type="submit" class="btn btn-primary" id="submitCreatorBtn">创建 Creator</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
-    </div>
+
+        <!-- 遮罩层 loading -->
+        <div id="loadingOverlay" class="loading-overlay">
+            <div class="loading-overlay-content">
+                <div class="loading-overlay-spinner"></div>
+                <div class="loading-overlay-text" id="loadingOverlayText">加载中... </div>
+            </div>
+        </div>
     </div>
     <!-- 主内容区域结束 -->
 
@@ -1519,13 +1719,13 @@
             try {
                 const { timestamp } = JSON.parse(authData);
                 const now = Date.now();
-                
+
                 // 检查是否超时
                 if (now - timestamp > SESSION_TIMEOUT) {
                     sessionStorage.removeItem(SESSION_KEY);
                     return false;
                 }
-                
+
                 return true;
             } catch (e) {
                 sessionStorage.removeItem(SESSION_KEY);
@@ -1544,7 +1744,7 @@
         // 处理登录
         function handleLogin(event) {
             event.preventDefault();
-            
+
             const passwordInput = document.getElementById('passwordInput');
             const errorDiv = document.getElementById('loginError');
             const password = passwordInput.value;
@@ -1557,14 +1757,14 @@
             if (password === ACCESS_PASSWORD) {
                 // 保存登录状态
                 saveAuthentication();
-                
+
                 // 隐藏登录界面，显示主内容
                 document.getElementById('loginContainer').classList.remove('show');
                 document.getElementById('mainContent').classList.add('authenticated');
-                
+
                 // 清空密码输入框
                 passwordInput.value = '';
-                
+
                 // 加载数据
                 loadCreators();
             } else {
@@ -1577,7 +1777,7 @@
         }
 
         // 页面加载时检查登录状态
-        window.addEventListener('DOMContentLoaded', function() {
+        window.addEventListener('DOMContentLoaded', function () {
             if (checkAuthentication()) {
                 // 已登录，显示主内容
                 document.getElementById('loginContainer').classList.remove('show');
@@ -1598,7 +1798,7 @@
         let filteredCreators = [];
         let currentPage = 1;
         const itemsPerPage = 18;
-        
+
         // 筛选相关变量
         let currentCategoryFilter = '';
         let currentStatusFilter = '';
@@ -1653,7 +1853,7 @@
                 const categoryFilter = document.getElementById('categoryFilter');
                 const statusFilter = document.getElementById('statusFilter');
                 const isSubstackFilter = document.getElementById('isSubstackFilter');
-                
+
                 // 构建查询参数
                 const params = new URLSearchParams();
                 if (statusFilter && statusFilter.value) {
@@ -1665,10 +1865,10 @@
                 if (categoryFilter && categoryFilter.value) {
                     params.append('category', categoryFilter.value);
                 }
-                
+
                 const queryString = params.toString();
                 const url = queryString ? `/api/creators?${queryString}` : '/api/creators';
-                
+
                 const response = await fetch(url);
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${await response.text()}`);
@@ -1680,13 +1880,13 @@
 
                 // 更新统计
                 countEl.textContent = data.count || 0;
-                
+
                 // 更新状态统计
                 const stats = data.stats || {};
                 document.getElementById('pending-count').textContent = stats.pending || 0;
                 document.getElementById('completed-count').textContent = stats.completed || 0;
                 document.getElementById('failed-count').textContent = stats.failed || 0;
-                
+
                 statsEl.style.display = 'flex';
 
                 // 初始化筛选器（只在第一次加载时初始化分类列表）
@@ -1700,7 +1900,7 @@
                 if (!isFiltering) {
                     loadingEl.style.display = 'none';
                 }
-                
+
                 // 隐藏遮罩层（如果是筛选操作）
                 if (isFiltering) {
                     hideLoadingOverlay();
@@ -1729,14 +1929,14 @@
         // 初始化筛选器（需要从服务器获取所有分类）
         async function initializeFilters() {
             const categoryFilter = document.getElementById('categoryFilter');
-            
+
             try {
                 // 获取所有数据以收集分类列表（不应用筛选）
                 const response = await fetch('/api/creators');
                 if (response.ok) {
                     const data = await response.json();
                     const allCreatorsForCategories = data.creators || [];
-                    
+
                     // 收集所有唯一的分类
                     const categories = new Set();
                     allCreatorsForCategories.forEach(creator => {
@@ -1749,11 +1949,11 @@
                             });
                         }
                     });
-                    
+
                     // 清空现有选项（保留"全部"）
                     if (categoryFilter) {
                         categoryFilter.innerHTML = '<option value="">全部</option>';
-                        
+
                         // 按字母顺序排序并添加选项
                         Array.from(categories).sort().forEach(cat => {
                             const option = document.createElement('option');
@@ -1776,18 +1976,18 @@
                 const categoryFilter = document.getElementById('categoryFilter');
                 const statusFilter = document.getElementById('statusFilter');
                 const isSubstackFilter = document.getElementById('isSubstackFilter');
-                
+
                 if (!categoryFilter || !statusFilter || !isSubstackFilter) {
                     console.error('筛选器元素未找到');
                     return;
                 }
-                
+
                 currentCategoryFilter = categoryFilter.value || '';
                 currentStatusFilter = statusFilter.value || '';
                 currentIsSubstackFilter = isSubstackFilter.value || '';
-                
+
                 console.log('筛选条件:', { currentCategoryFilter, currentStatusFilter, currentIsSubstackFilter });
-                
+
                 // 重新从服务器加载数据（应用筛选条件），传入 isFiltering=true
                 await loadCreators(true);
             } catch (error) {
@@ -1803,6 +2003,7 @@
             document.getElementById('categoryFilter').value = '';
             document.getElementById('statusFilter').value = '';
             document.getElementById('isSubstackFilter').value = '';
+            document.getElementById('sortFilter').value = 'default';
             currentCategoryFilter = '';
             currentStatusFilter = '';
             currentIsSubstackFilter = '';
@@ -1825,6 +2026,30 @@
                 return;
             }
 
+            // 应用排序
+            const sortFilter = document.getElementById('sortFilter');
+            const sortValue = sortFilter ? sortFilter.value : 'default';
+
+            if (sortValue !== 'default') {
+                displayCreators.sort((a, b) => {
+                    let aValue, bValue;
+
+                    if (sortValue.startsWith('created_at')) {
+                        aValue = new Date(a.created_at || 0);
+                        bValue = new Date(b.created_at || 0);
+                    } else if (sortValue.startsWith('updated_at')) {
+                        aValue = new Date(a.updated_at || a.created_at || 0);
+                        bValue = new Date(b.updated_at || b.created_at || 0);
+                    }
+
+                    if (sortValue.endsWith('_desc')) {
+                        return bValue - aValue; // 降序（新→旧）
+                    } else {
+                        return aValue - bValue; // 升序（旧→新）
+                    }
+                });
+            }
+
             // 计算分页
             const totalPages = Math.ceil(displayCreators.length / itemsPerPage);
             const startIndex = (page - 1) * itemsPerPage;
@@ -1833,95 +2058,95 @@
 
             // 渲染 creator 卡片
             gridEl.innerHTML = pageCreators.map(creator => {
-                    // 优先使用 creator_signature_image_url 作为头像
-                    const imageUrl = creator.creator_signature_image_url;
-                    const fallbackText = (creator.creator_name || 'C')[0].toUpperCase();
-                    
-                    let avatar;
-                    if (imageUrl) {
-                        // 如果有图片 URL，使用 creator_signature_image_url 作为头像，失败时显示首字母
-                        const imgId = `avatar-img-${creator.creator_id || creator.id || Math.random()}`;
-                        avatar = `<img id="${imgId}" src="${imageUrl}" alt="${creator.creator_name || 'Creator'}" onload="this.classList.add('loaded'); const fallback = this.parentElement.querySelector('.avatar-fallback'); if(fallback) fallback.style.display='none';" onerror="this.classList.add('error'); this.classList.remove('loaded');">` +
-                                 `<span class="avatar-fallback">${fallbackText}</span>`;
-                    } else {
-                        // 如果没有图片 URL，直接显示首字母
-                        avatar = `<span class="avatar-fallback">${fallbackText}</span>`;
+                // 优先使用 creator_signature_image_url 作为头像
+                const imageUrl = creator.creator_signature_image_url;
+                const fallbackText = (creator.creator_name || 'C')[0].toUpperCase();
+
+                let avatar;
+                if (imageUrl) {
+                    // 如果有图片 URL，使用 creator_signature_image_url 作为头像，失败时显示首字母
+                    const imgId = `avatar-img-${creator.creator_id || creator.id || Math.random()}`;
+                    avatar = `<img id="${imgId}" src="${imageUrl}" alt="${creator.creator_name || 'Creator'}" onload="this.classList.add('loaded'); const fallback = this.parentElement.querySelector('.avatar-fallback'); if(fallback) fallback.style.display='none';" onerror="this.classList.add('error'); this.classList.remove('loaded');">` +
+                        `<span class="avatar-fallback">${fallbackText}</span>`;
+                } else {
+                    // 如果没有图片 URL，直接显示首字母
+                    avatar = `<span class="avatar-fallback">${fallbackText}</span>`;
+                }
+
+                const formatDate = (dateStr) => {
+                    if (!dateStr) return '未知';
+                    try {
+                        const date = new Date(dateStr);
+                        return date.toLocaleDateString('zh-CN', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric'
+                        });
+                    } catch {
+                        return dateStr;
                     }
+                };
 
-                    const formatDate = (dateStr) => {
-                        if (!dateStr) return '未知';
-                        try {
-                            const date = new Date(dateStr);
-                            return date.toLocaleDateString('zh-CN', { 
-                                year: 'numeric', 
-                                month: 'short', 
-                                day: 'numeric' 
-                            });
-                        } catch {
-                            return dateStr;
-                        }
+                const formatCurrency = (amount) => {
+                    if (!amount) return '未设置';
+                    return `$${parseFloat(amount).toFixed(2)}`;
+                };
+
+                const formatNumber = (num) => {
+                    if (!num) return '未知';
+                    return num.toLocaleString();
+                };
+
+                // 获取状态并生成状态徽章
+                const getStatusBadge = (status) => {
+                    const statusValue = status || 'pending';
+                    const statusMap = {
+                        'pending': { text: '待生成', class: 'pending' },
+                        'generating': { text: '生成中', class: 'generating' },
+                        'completed': { text: '已完成', class: 'completed' },
+                        'failed': { text: '失败', class: 'failed' }
                     };
+                    const statusInfo = statusMap[statusValue] || statusMap['pending'];
+                    return `<span class="status-badge ${statusInfo.class}">${statusInfo.text}</span>`;
+                };
 
-                    const formatCurrency = (amount) => {
-                        if (!amount) return '未设置';
-                        return `$${parseFloat(amount).toFixed(2)}`;
-                    };
+                const statusBadge = getStatusBadge(creator.status);
 
-                    const formatNumber = (num) => {
-                        if (!num) return '未知';
-                        return num.toLocaleString();
-                    };
+                const tags = [
+                    ...(creator.creator_tokens_direct || []).map(t => `<span class="tag primary">${t}</span>`),
+                    ...(creator.creator_tokens_implied || []).map(t => `<span class="tag">${t}</span>`)
+                ].join('');
 
-                    // 获取状态并生成状态徽章
-                    const getStatusBadge = (status) => {
-                        const statusValue = status || 'pending';
-                        const statusMap = {
-                            'pending': { text: '待生成', class: 'pending' },
-                            'generating': { text: '生成中', class: 'generating' },
-                            'completed': { text: '已完成', class: 'completed' },
-                            'failed': { text: '失败', class: 'failed' }
-                        };
-                        const statusInfo = statusMap[statusValue] || statusMap['pending'];
-                        return `<span class="status-badge ${statusInfo.class}">${statusInfo.text}</span>`;
-                    };
+                const creatorData = JSON.stringify(creator).replace(/"/g, '&quot;');
 
-                    const statusBadge = getStatusBadge(creator.status);
+                // 转义 URL 中的特殊字符
+                const escapeUrl = (url) => {
+                    if (!url) return '';
+                    return url.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                };
 
-                    const tags = [
-                        ...(creator.creator_tokens_direct || []).map(t => `<span class="tag primary">${t}</span>`),
-                        ...(creator.creator_tokens_implied || []).map(t => `<span class="tag">${t}</span>`)
-                    ].join('');
+                // 生成 Website 按钮
+                const websiteUrl = creator.website_url;
+                let websiteButton = '';
+                if (websiteUrl) {
+                    const escapedUrl = escapeUrl(websiteUrl);
+                    websiteButton = `<button class="action-btn action-btn-secondary" onclick="event.stopPropagation(); window.open('${escapedUrl}', '_blank')">Website</button>`;
+                } else {
+                    websiteButton = `<button class="action-btn action-btn-secondary" disabled style="opacity: 0.5; cursor: not-allowed;">Website</button>`;
+                }
 
-                    const creatorData = JSON.stringify(creator).replace(/"/g, '&quot;');
-                    
-                    // 转义 URL 中的特殊字符
-                    const escapeUrl = (url) => {
-                        if (!url) return '';
-                        return url.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-                    };
-                    
-                    // 生成 Website 按钮
-                    const websiteUrl = creator.website_url;
-                    let websiteButton = '';
-                    if (websiteUrl) {
-                        const escapedUrl = escapeUrl(websiteUrl);
-                        websiteButton = `<button class="action-btn action-btn-secondary" onclick="event.stopPropagation(); window.open('${escapedUrl}', '_blank')">Website</button>`;
-                    } else {
-                        websiteButton = `<button class="action-btn action-btn-secondary" disabled style="opacity: 0.5; cursor: not-allowed;">Website</button>`;
-                    }
-                    
-                    // 生成 pizesiz 按钮
-                    const handle = creator.handle;
-                    let pizesizButton = '';
-                    if (handle) {
-                        const pizesizUrl = `https://FridgeChannels.com/${handle}`;
-                        const escapedPizesizUrl = escapeUrl(pizesizUrl);
-                        pizesizButton = `<button class="action-btn action-btn-secondary" onclick="event.stopPropagation(); window.open('${escapedPizesizUrl}', '_blank')">Pitch Site</button>`;
-                    } else {
-                        pizesizButton = `<button class="action-btn action-btn-secondary" disabled style="opacity: 0.5; cursor: not-allowed;">Pitch Site</button>`;
-                    }
-                    
-                    return `
+                // 生成 pizesiz 按钮
+                const handle = creator.handle;
+                let pizesizButton = '';
+                if (handle) {
+                    const pizesizUrl = `https://FridgeChannels.com/${handle}`;
+                    const escapedPizesizUrl = escapeUrl(pizesizUrl);
+                    pizesizButton = `<button class="action-btn action-btn-secondary" onclick="event.stopPropagation(); window.open('${escapedPizesizUrl}', '_blank')">Pitch Site</button>`;
+                } else {
+                    pizesizButton = `<button class="action-btn action-btn-secondary" disabled style="opacity: 0.5; cursor: not-allowed;">Pitch Site</button>`;
+                }
+
+                return `
                         <div class="creator-card">
                             <div class="creator-header">
                                 <div class="creator-avatar">
@@ -1989,10 +2214,10 @@
                             </div>
                         </div>
                     `;
-                }).join('');
+            }).join('');
 
             gridEl.style.display = 'grid';
-            
+
             // 渲染分页控件
             renderPagination(page, totalPages);
         }
@@ -2000,7 +2225,7 @@
         // 渲染分页控件
         function renderPagination(currentPage, totalPages) {
             const paginationEl = document.getElementById('pagination');
-            
+
             if (totalPages <= 1) {
                 paginationEl.style.display = 'none';
                 return;
@@ -2020,7 +2245,7 @@
             // 页码按钮
             const pageNumbers = [];
             const maxVisiblePages = 7;
-            
+
             if (totalPages <= maxVisiblePages) {
                 // 如果总页数少于等于最大可见页数，显示所有页码
                 for (let i = 1; i <= totalPages; i++) {
@@ -2130,7 +2355,7 @@
             const email = creator.contact_email || '未设置邮箱';
             const subject = creator.outreach_email_subject || 'Fridge Channel Magnet 合作邀请';
             const message = creator.message;
-            
+
             // 转义HTML和JavaScript特殊字符
             const escapeHtml = (str) => {
                 if (!str) return '';
@@ -2138,17 +2363,17 @@
                 div.textContent = str;
                 return div.innerHTML;
             };
-            
+
             // 显示 Message（在收件人和主题上方，使用和 Content 相同的样式）
             const messagePreviewContainer = document.getElementById('messagePreviewContainer');
             const messagePreview = document.getElementById('messagePreview');
-            
+
             // 检查 message 是否有值（不为 null、undefined 或空字符串）
             const hasMessage = message !== null && message !== undefined && String(message).trim() !== '';
-            
+
             // 始终显示 Message 区块
             messagePreviewContainer.style.display = 'block';
-            
+
             if (hasMessage) {
                 messagePreview.textContent = message;
                 messagePreview.classList.remove('empty');
@@ -2156,7 +2381,7 @@
                 messagePreview.textContent = '暂无 Message 内容';
                 messagePreview.classList.add('empty');
             }
-            
+
             // 显示收件人和主题信息
             emailInfo.innerHTML = `
                 <div class="email-info-row">
@@ -2186,10 +2411,10 @@
             // 显示邮件内容
             const emailBody = creator.outreach_email_body;
             // 检查邮件是否未设置：为空、空字符串、或内容为"未设置"
-            const isEmailNotSet = !emailBody || 
-                                  emailBody.trim() === '' || 
-                                  emailBody.trim() === '未设置';
-            
+            const isEmailNotSet = !emailBody ||
+                emailBody.trim() === '' ||
+                emailBody.trim() === '未设置';
+
             if (emailBody && !isEmailNotSet) {
                 emailPreview.textContent = emailBody;
                 emailPreview.classList.remove('empty');
@@ -2201,7 +2426,7 @@
             // 如果邮件未设置，按钮改为跳转到 website_url
             if (isEmailNotSet) {
                 sendEmailBtn.textContent = '访问网站';
-                sendEmailBtn.onclick = function() {
+                sendEmailBtn.onclick = function () {
                     const websiteUrl = creator.website_url;
                     if (websiteUrl) {
                         window.open(websiteUrl, '_blank');
@@ -2214,7 +2439,7 @@
                 // 如果邮件已设置，使用原来的发送邮件功能
                 sendEmailBtn.textContent = '发送邮件';
                 sendEmailBtn.onclick = sendEmail;
-                
+
                 // 如果没有邮箱，禁用发送按钮
                 if (!creator.contact_email) {
                     sendEmailBtn.disabled = true;
@@ -2235,7 +2460,7 @@
         }
 
         // 点击模态框外部关闭
-        document.getElementById('emailModal').addEventListener('click', function(e) {
+        document.getElementById('emailModal').addEventListener('click', function (e) {
             if (e.target === this) {
                 closeEmailModal();
             }
@@ -2247,7 +2472,7 @@
             const originalHTML = button.innerHTML;
             const originalText = button.textContent.trim();
             const hasSvg = button.querySelector('svg') !== null;
-            
+
             // 如果是文字按钮，使用文字反馈；如果是图标按钮，使用图标反馈
             let feedbackHTML;
             if (hasSvg) {
@@ -2255,14 +2480,14 @@
                 const originalSvg = button.querySelector('svg');
                 let svgWidth = '18px';
                 let svgHeight = '18px';
-                
+
                 if (originalSvg) {
                     const inlineWidth = originalSvg.style.width;
                     const inlineHeight = originalSvg.style.height;
-                    
+
                     if (inlineWidth) svgWidth = inlineWidth;
                     if (inlineHeight) svgHeight = inlineHeight;
-                    
+
                     if (!inlineWidth || !inlineHeight) {
                         const computedStyle = window.getComputedStyle(originalSvg);
                         if (!inlineWidth && computedStyle.width && computedStyle.width !== 'auto') {
@@ -2273,7 +2498,7 @@
                         }
                     }
                 }
-                
+
                 feedbackHTML = `
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="width: ${svgWidth}; height: ${svgHeight}; display: block;">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
@@ -2283,14 +2508,14 @@
                 // 文字按钮，显示"已复制"
                 feedbackHTML = '已复制';
             }
-            
+
             try {
                 await navigator.clipboard.writeText(text);
-                
+
                 // 更新按钮状态
                 button.classList.add('copied');
                 button.innerHTML = feedbackHTML;
-                
+
                 // 2秒后恢复
                 setTimeout(() => {
                     button.classList.remove('copied');
@@ -2306,11 +2531,11 @@
                 textArea.select();
                 try {
                     document.execCommand('copy');
-                    
+
                     // 更新按钮状态
                     button.classList.add('copied');
                     button.innerHTML = feedbackHTML;
-                    
+
                     setTimeout(() => {
                         button.classList.remove('copied');
                         button.innerHTML = originalHTML;
@@ -2375,13 +2600,13 @@
             } else {
                 creator = creatorData;
             }
-            
+
             const message = creator.message;
             if (!message || (typeof message === 'string' && message.trim() === '')) {
                 alert('该 Creator 没有 Message 内容可复制');
                 return;
             }
-            
+
             const messageText = typeof message === 'string' ? message : String(message);
             await copyToClipboard(messageText, buttonElement);
         }
@@ -2501,15 +2726,15 @@
             const nextBtn = document.getElementById('nextBtn');
 
             const image = currentImages[index];
-            
+
             // 更新图片
             modalImage.src = image.url;
             modalImage.alt = image.front_name || `图片 ${index + 1}`;
-            
+
             // 更新信息
             imageName.textContent = image.front_name || `图片 ${index + 1}`;
             imageCounter.textContent = `${index + 1} / ${currentImages.length}`;
-            
+
             // 更新按钮状态
             prevBtn.disabled = index === 0;
             nextBtn.disabled = index === currentImages.length - 1;
@@ -2545,7 +2770,7 @@
         }
 
         // 键盘事件：左右箭头切换图片，ESC 关闭
-        document.addEventListener('keydown', function(e) {
+        document.addEventListener('keydown', function (e) {
             const imageModal = document.getElementById('imageModal');
             if (imageModal.classList.contains('show')) {
                 if (e.key === 'ArrowLeft') {
@@ -2559,7 +2784,7 @@
         });
 
         // 点击图片模态框外部关闭
-        document.getElementById('imageModal').addEventListener('click', function(e) {
+        document.getElementById('imageModal').addEventListener('click', function (e) {
             if (e.target === this) {
                 closeImageModal();
             }
@@ -2587,12 +2812,12 @@
             const modal = document.getElementById('importModal');
             const progress = document.getElementById('importProgress');
             const result = document.getElementById('importResult');
-            
+
             modal.classList.add('show');
             progress.classList.add('show');
             result.classList.remove('show');
             result.className = 'import-result';
-            
+
             // 重置进度条
             document.getElementById('progressFill').style.width = '0%';
         }
@@ -2678,7 +2903,7 @@
                             <div>失败: ${data.total_failed || 0}</div>
                         </div>
                     `;
-                    
+
                     if (data.errors && data.errors.length > 0) {
                         resultHtml += `
                             <div class="import-errors">
@@ -2689,7 +2914,7 @@
                             </div>
                         `;
                     }
-                    
+
                     importResult.innerHTML = resultHtml;
 
                     // 如果成功导入了数据，刷新列表
@@ -2729,7 +2954,7 @@
         }
 
         // 点击导入模态框外部关闭
-        document.getElementById('importModal').addEventListener('click', function(e) {
+        document.getElementById('importModal').addEventListener('click', function (e) {
             if (e.target === this) {
                 closeImportModal();
             }
@@ -2974,7 +3199,7 @@
                             <div>失败: ${data.total_failed || 0}</div>
                         </div>
                     `;
-                    
+
                     if (data.errors && data.errors.length > 0) {
                         resultHtml += `
                             <div class="import-errors">
@@ -2985,7 +3210,7 @@
                             </div>
                         `;
                     }
-                    
+
                     importResult.innerHTML = resultHtml;
 
                     // 如果成功导入了数据，刷新列表
@@ -3023,7 +3248,337 @@
                 console.error('导入错误:', error);
             }
         }
+
+        // ========== Add Creator 功能 ==========
+
+        // 显示添加 Creator 模态框
+        function showAddCreatorModal() {
+            const modal = document.getElementById('addCreatorModal');
+            const categorySelect = document.getElementById('creatorCategory');
+
+            // 填充分类选项（使用已有的分类列表）
+            const categoryFilter = document.getElementById('categoryFilter');
+            if (categoryFilter && categoryFilter.options.length > 1) {
+                categorySelect.innerHTML = '';
+                for (let i = 1; i < categoryFilter.options.length; i++) {
+                    const option = document.createElement('option');
+                    option.value = categoryFilter.options[i].value;
+                    option.textContent = categoryFilter.options[i].textContent;
+                    categorySelect.appendChild(option);
+                }
+            }
+
+            modal.classList.add('show');
+        }
+
+        // 关闭添加 Creator 模态框
+        function closeAddCreatorModal() {
+            const modal = document.getElementById('addCreatorModal');
+            const form = document.getElementById('addCreatorForm');
+
+            modal.classList.remove('show');
+            form.reset();
+
+            // 清除所有错误消息
+            document.querySelectorAll('.form-error').forEach(el => {
+                el.classList.remove('show');
+                el.textContent = '';
+            });
+            document.querySelectorAll('.form-input.error').forEach(el => {
+                el.classList.remove('error');
+            });
+        }
+
+        // 验证表单
+        function validateCreatorForm() {
+            let isValid = true;
+
+            // 清除之前的错误
+            document.querySelectorAll('.form-error').forEach(el => {
+                el.classList.remove('show');
+                el.textContent = '';
+            });
+            document.querySelectorAll('.form-input.error').forEach(el => {
+                el.classList.remove('error');
+            });
+
+            // 验证名称
+            const name = document.getElementById('creatorName');
+            if (!name.value.trim()) {
+                showFieldError('creatorName', 'Creator 名称不能为空');
+                isValid = false;
+            }
+
+            // 验证 handle
+            const handle = document.getElementById('creatorHandle');
+            const handlePattern = /^[a-zA-Z0-9_-]+$/;
+            if (!handle.value.trim()) {
+                showFieldError('creatorHandle', 'Handle 不能为空');
+                isValid = false;
+            } else if (!handlePattern.test(handle.value)) {
+                showFieldError('creatorHandle', 'Handle 只能包含字母、数字、下划线和连字符');
+                isValid = false;
+            }
+
+            // 验证网站 URL
+            const website = document.getElementById('creatorWebsite');
+            try {
+                new URL(website.value);
+            } catch (e) {
+                showFieldError('creatorWebsite', '请输入有效的 URL (例如: https://example.com)');
+                isValid = false;
+            }
+
+            // 验证 logo 文件
+            const logo = document.getElementById('creatorLogo');
+            if (!logo.files || logo.files.length === 0) {
+                showFieldError('creatorLogo', '请选择 Logo 图片');
+                isValid = false;
+            } else {
+                const file = logo.files[0];
+                const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+                if (!validTypes.includes(file.type)) {
+                    showFieldError('creatorLogo', '请上传 PNG、JPG 或 WEBP 格式的图片');
+                    isValid = false;
+                }
+                // 检查文件大小（最大 10MB）
+                if (file.size > 10 * 1024 * 1024) {
+                    showFieldError('creatorLogo', '图片文件不能超过 10MB');
+                    isValid = false;
+                }
+            }
+
+            return isValid;
+        }
+
+        // 显示字段错误
+        function showFieldError(fieldId, message) {
+            const input = document.getElementById(fieldId);
+            const error = document.getElementById(fieldId + 'Error');
+
+            if (input) input.classList.add('error');
+            if (error) {
+                error.textContent = message;
+                error.classList.add('show');
+            }
+        }
+
+        // 处理表单提交
+        async function handleAddCreatorSubmit(event) {
+            event.preventDefault();
+
+            // 验证表单
+            if (!validateCreatorForm()) {
+                return;
+            }
+
+            const submitBtn = document.getElementById('submitCreatorBtn');
+            const originalText = submitBtn.textContent;
+
+            try {
+                // 禁用提交按钮
+                submitBtn.disabled = true;
+                submitBtn.textContent = '创建中...';
+
+                // 构建 FormData
+                const formData = new FormData();
+
+                formData.append('creator_name', document.getElementById('creatorName').value.trim());
+                formData.append('handle', document.getElementById('creatorHandle').value.trim());
+                formData.append('website_url', document.getElementById('creatorWebsite').value.trim());
+                formData.append('logo', document.getElementById('creatorLogo').files[0]);
+
+                const tokensVal = document.getElementById('creatorTokensDirect').value.trim();
+                if (tokensVal) {
+                    formData.append('creator_tokens_direct', tokensVal);
+                }
+
+                // 获取选中的分类
+                const categorySelect = document.getElementById('creatorCategory');
+                const selectedCategories = Array.from(categorySelect.selectedOptions).map(opt => opt.value);
+                if (selectedCategories.length > 0) {
+                    formData.append('content_category', JSON.stringify(selectedCategories));
+                }
+
+                // 发送请求
+                const response = await fetch('/api/creators', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.detail || '创建失败');
+                }
+
+                // 成功
+                showCreatorSuccessModal(data.creator);
+                closeAddCreatorModal();
+
+                // 设置排序为创建时间（新→旧）以便看到新创建的 creator
+                const sortFilter = document.getElementById('sortFilter');
+                if (sortFilter) {
+                    sortFilter.value = 'created_at_desc';
+                }
+
+                // 刷新列表
+                await loadCreators(true);
+
+            } catch (error) {
+                alert(`创建失败: ${error.message}`);
+                console.error('创建 Creator 错误:', error);
+            } finally {
+                // 恢复按钮状态
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+            }
+        }
+
+        // 显示创建成功/生成确认对话框
+        function showCreatorSuccessModal(creator) {
+            const pitchSiteUrl = `https://fridgechannels.com/${creator.handle}`;
+
+            const modalHtml = `
+                <div id="creatorSuccessModal" class="modal show" style="z-index: 10000;">
+                    <div class="modal-content" style="max-width: 500px;">
+                        <div class="modal-header">
+                            <h2>✓ 创建成功</h2>
+                            <button class="modal-close" onclick="closeCreatorSuccessModal()">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <div style="margin-bottom: 1.5rem; text-align: center;">
+                                <div style="font-size: 1.2rem; font-weight: 600; margin-bottom: 0.5rem;">
+                                    ${creator.creator_name}
+                                </div>
+                                <div style="color: #666; font-size: 0.9rem;">
+                                    Creator ID: ${creator.creator_id}
+                                </div>
+                            </div>
+                            
+                            <div style="background: #f0f7ff; padding: 1.5rem; border-radius: 8px; border: 1px solid #cce5ff; text-align: center; margin-bottom: 1.5rem;">
+                                <h3 style="color: #004085; font-size: 1.1rem; margin-bottom: 0.5rem;">是否立即生成图片？</h3>
+                                <p style="color: #555; font-size: 0.95rem; margin-bottom: 1.5rem;">
+                                    生成过程需要执行多个步骤，预计耗时 2-5 分钟。<br>
+                                    生成完成后将为您提供 Pitch Site URL。
+                                </p>
+                                
+                                <div style="display: flex; gap: 1rem; justify-content: center;">
+                                    <button class="btn btn-primary" onclick="startGenerationFlow('${creator.creator_id}', '${pitchSiteUrl}')" style="min-width: 140px;">
+                                        立即生成
+                                    </button>
+                                    <button class="btn btn-secondary" onclick="closeCreatorSuccessModal()" style="min-width: 100px;">
+                                        稍后
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div id="generationStatusArea" style="display: none; margin-top: 1rem; border-top: 1px solid #eee; padding-top: 1rem;">
+                                <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                    <div class="loading-overlay-spinner" style="width: 20px; height: 20px; border-width: 2px;"></div>
+                                    <span style="font-weight: 600; color: #667eea;">正在生成中...</span>
+                                </div>
+                                <p style="font-size: 0.85rem; color: #666; text-align: center;">请勿关闭此窗口，任务正在后台运行</p>
+                            </div>
+                            
+                            <div id="pitchSiteResultArea" style="display: none; margin-top: 1.5rem;">
+                                <div style="background: #d4edda; padding: 1rem; border-radius: 8px; border-left: 4px solid #28a745;">
+                                    <div style="font-weight: 600; color: #155724; margin-bottom: 0.5rem;">
+                                        ✓ 生成完成！Pitch Site URL:
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                        <input type="text" id="resultPitchUrl" value="${pitchSiteUrl}" 
+                                               style="flex: 1; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px;" readonly>
+                                        <button onclick="copyResultPitchUrl()" class="btn btn-primary" style="padding: 0.5rem;">复制</button>
+                                    </div>
+                                    <div style="margin-top: 1rem; text-align: right;">
+                                        <button class="btn btn-primary" onclick="window.open('${pitchSiteUrl}', '_blank'); closeCreatorSuccessModal();">访问网站</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // 移除旧的
+            const existing = document.getElementById('creatorSuccessModal');
+            if (existing) {
+                existing.remove();
+            }
+
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+        }
+
+        async function startGenerationFlow(creatorId, pitchSiteUrl) {
+            // 隐藏按钮区域，显示 loading
+            const btnArea = document.querySelector('#creatorSuccessModal .modal-body > div:nth-child(2)');
+            const statusArea = document.getElementById('generationStatusArea');
+
+            if (btnArea) btnArea.style.display = 'none';
+            if (statusArea) statusArea.style.display = 'block';
+
+            try {
+                // 添加超时控制（10分钟）
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 600000);
+
+                const response = await fetch(`/api/creators/${creatorId}/generate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    signal: controller.signal
+                });
+
+                clearTimeout(timeoutId);
+                const data = await response.json();
+
+                if (response.ok) {
+                    // 成功，显示结果
+                    statusArea.style.display = 'none';
+                    const resultArea = document.getElementById('pitchSiteResultArea');
+                    if (resultArea) resultArea.style.display = 'block';
+
+                    // 刷新列表
+                    await loadCreators(true);
+                } else {
+                    throw new Error(data.detail || '生成失败');
+                }
+            } catch (error) {
+                statusArea.innerHTML = `
+                    <div style="color: #dc3545; text-align: center;">
+                        <strong>生成失败</strong><br>
+                        ${error.message}
+                    </div>
+                    <div style="text-align: center; margin-top: 1rem;">
+                        <button class="btn btn-secondary" onclick="closeCreatorSuccessModal()">关闭</button>
+                    </div>
+                `;
+            }
+        }
+
+        // 关闭创建成功对话框
+        function closeCreatorSuccessModal() {
+            const modal = document.getElementById('creatorSuccessModal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+
+        // 复制 Pitch Site URL (结果页)
+        function copyResultPitchUrl() {
+            const input = document.getElementById('resultPitchUrl');
+            if (input) {
+                input.select();
+                document.execCommand('copy');
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = '已复制!';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                }, 2000);
+            }
+        }
     </script>
 </body>
-</html>
 
+</html>
