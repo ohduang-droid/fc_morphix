@@ -10,9 +10,6 @@ venv/
 pip-wheel-metadata/
 .uv-cache/
 
-# Environment / secrets
-.env
-
 # Cache
 cache/
 
