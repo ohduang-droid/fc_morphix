@@ -1408,6 +1408,99 @@
             overflow: hidden;
         }
 
+        /* Drop Zone Styles */
+        .drop-zone {
+            border: 2px dashed #cbd5e0;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            background: #f8fafc;
+            min-height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .drop-zone:hover,
+        .drop-zone.dragover {
+            border-color: #667eea;
+            background: #eef2ff;
+        }
+
+        .drop-zone-input {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .drop-zone-text {
+            pointer-events: none;
+            /* Let clicks pass through to input */
+        }
+
+        .file-preview {
+            display: none;
+            width: 100%;
+            flex-direction: column;
+            align-items: center;
+            z-index: 2;
+            /* Above input when showing */
+            position: relative;
+        }
+
+        .file-preview img {
+            max-width: 100%;
+            max-height: 200px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 0.5rem;
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+            color: #4a5568;
+            background: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .remove-file {
+            background: none;
+            border: none;
+            color: #e53e3e;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 1.1rem;
+            line-height: 1;
+            padding: 0;
+            margin-left: 0.25rem;
+        }
+
+        .drop-zone.has-file .drop-zone-text {
+            display: none;
+        }
+
+        .drop-zone.has-file .file-preview {
+            display: flex;
+        }
+
+        /* When file is present, make input smaller or move it so remove button is clickable */
+        .drop-zone.has-file .drop-zone-input {
+            display: none;
+            /* Hide input when file is selected to allow interaction with remove btn */
+        }
+
         /* 登录界面响应式设计 */
         @media (max-width: 480px) {
             .login-container {
@@ -1660,9 +1753,34 @@
 
                         <div class="form-group">
                             <label class="form-label required" for="creatorLogo">Logo (图片)</label>
-                            <input type="file" id="creatorLogo" class="form-input" required
-                                accept="image/png,image/jpeg,image/jpg,image/webp">
+                            <div id="dropZone" class="drop-zone">
+                                <div class="drop-zone-text">
+                                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">📁</div>
+                                    <div>点击、拖拽或粘贴图片到此处</div>
+                                    <div style="font-size: 0.8rem; color: #999; margin-top: 0.25rem;">支持 PNG, JPG, WEBP
+                                    </div>
+                                </div>
+                                <div id="filePreview" class="file-preview">
+                                    <img id="previewImg" src="" alt="Preview">
+                                    <div class="file-info">
+                                        <span id="fileName">filename.png</span>
+                                        <button type="button" class="remove-file"
+                                            onclick="clearFileSelection()">×</button>
+                                    </div>
+                                </div>
+                                <input type="file" id="creatorLogo" class="drop-zone-input"
+                                    accept="image/png,image/jpeg,image/jpg,image/webp">
+                            </div>
                             <div class="form-error" id="creatorLogoError"></div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label required" for="creatorTokensDirect">Image With [] (Tokens)</label>
+                            <div style="font-size: 0.85rem; color: #666; margin-bottom: 0.25rem;">如果是
+                                CoffeeWith___，请输入作者简称</div>
+                            <input type="text" id="creatorTokensDirect" class="form-input" required
+                                placeholder="例如: Mark">
+                            <div class="form-error" id="creatorTokensDirectError"></div>
                         </div>
 
                         <div class="form-group">
@@ -1672,15 +1790,6 @@
                             </select>
                             <div style="font-size: 0.85rem; color: #666; margin-top: 0.25rem;">
                                 按住 Ctrl/Cmd 可多选
-                            </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label" for="creatorTokensDirect">Image With [] (Tokens)</label>
-                            <input type="text" id="creatorTokensDirect" class="form-input"
-                                placeholder="例如: white background, minimalism (逗号分隔)">
-                            <div style="font-size: 0.85rem; color: #666; margin-top: 0.25rem;">
-                                将保存为 JSON 数组格式
                             </div>
                         </div>
 
@@ -3260,15 +3369,31 @@
             const categoryFilter = document.getElementById('categoryFilter');
             if (categoryFilter && categoryFilter.options.length > 1) {
                 categorySelect.innerHTML = '';
+                const existingValues = new Set();
+
                 for (let i = 1; i < categoryFilter.options.length; i++) {
+                    const val = categoryFilter.options[i].value;
+                    const txt = categoryFilter.options[i].textContent;
+                    if (val) {
+                        const option = document.createElement('option');
+                        option.value = val;
+                        option.textContent = txt;
+                        categorySelect.appendChild(option);
+                        existingValues.add(val);
+                    }
+                }
+
+                // 确保有 "Other" 选项
+                if (!existingValues.has('Other')) {
                     const option = document.createElement('option');
-                    option.value = categoryFilter.options[i].value;
-                    option.textContent = categoryFilter.options[i].textContent;
+                    option.value = 'Other';
+                    option.textContent = 'Other';
                     categorySelect.appendChild(option);
                 }
             }
 
             modal.classList.add('show');
+            setupDropZone();
         }
 
         // 关闭添加 Creator 模态框
@@ -3278,6 +3403,7 @@
 
             modal.classList.remove('show');
             form.reset();
+            clearFileSelection(); // 清除文件选择
 
             // 清除所有错误消息
             document.querySelectorAll('.form-error').forEach(el => {
@@ -3329,6 +3455,14 @@
                 isValid = false;
             }
 
+
+            // 验证 Tokens
+            const tokens = document.getElementById('creatorTokensDirect');
+            if (!tokens.value.trim()) {
+                showFieldError('creatorTokensDirect', '请输入 Creator 简称');
+                isValid = false;
+            }
+
             // 验证 logo 文件
             const logo = document.getElementById('creatorLogo');
             if (!logo.files || logo.files.length === 0) {
@@ -3361,6 +3495,115 @@
                 error.textContent = message;
                 error.classList.add('show');
             }
+        }
+
+        // Setup Drag & Drop
+        function setupDropZone() {
+            const dropZone = document.getElementById('dropZone');
+            const input = document.getElementById('creatorLogo');
+
+            if (!dropZone || dropZone.dataset.setup) return;
+            dropZone.dataset.setup = 'true';
+
+            // Drag events
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, preventDefaults, false);
+            });
+
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, highlight, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, unhighlight, false);
+            });
+
+            function highlight() {
+                dropZone.classList.add('dragover');
+            }
+
+            function unhighlight() {
+                dropZone.classList.remove('dragover');
+            }
+
+            dropZone.addEventListener('drop', handleDrop, false);
+
+            function handleDrop(e) {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                handleFiles(files);
+            }
+
+            // Input change
+            input.addEventListener('change', function () {
+                handleFiles(this.files);
+            });
+
+            // Paste event (global or focused on drop zone)
+            // Ideally we bind this to the document or modal, but check if modal is open
+            document.addEventListener('paste', handlePaste);
+        }
+
+        function handlePaste(e) {
+            const modal = document.getElementById('addCreatorModal');
+            if (!modal.classList.contains('show')) return;
+
+            if (e.clipboardData && e.clipboardData.items) {
+                const items = e.clipboardData.items;
+                for (let i = 0; i < items.length; i++) {
+                    if (items[i].type.indexOf('image') !== -1) {
+                        const blob = items[i].getAsFile();
+                        handleFiles([blob]);
+                        e.preventDefault(); // Prevent pasting into other inputs if focused
+                        return;
+                    }
+                }
+            }
+        }
+
+        function handleFiles(files) {
+            const input = document.getElementById('creatorLogo');
+            if (files.length > 0) {
+                // If files came from drop/paste, we need to update the input.files
+                // Note: fileList is read-only usually, so we use DataTransfer
+                if (input.files !== files) {
+                    const dt = new DataTransfer();
+                    dt.items.add(files[0]);
+                    input.files = dt.files;
+                }
+                updateFilePreview(files[0]);
+            }
+        }
+
+        function updateFilePreview(file) {
+            const dropZone = document.getElementById('dropZone');
+            const previewImg = document.getElementById('previewImg');
+            const fileName = document.getElementById('fileName');
+            const reader = new FileReader();
+
+            reader.readAsDataURL(file);
+            reader.onloadend = function () {
+                previewImg.src = reader.result;
+                fileName.textContent = file.name || "pasted-image.png";
+                dropZone.classList.add('has-file');
+
+                // Clear error if any
+                document.getElementById('creatorLogoError').textContent = '';
+                document.getElementById('creatorLogoError').classList.remove('show');
+            }
+        }
+
+        function clearFileSelection() {
+            const dropZone = document.getElementById('dropZone');
+            const input = document.getElementById('creatorLogo');
+
+            input.value = ''; // Clear input
+            dropZone.classList.remove('has-file');
         }
 
         // 处理表单提交
@@ -3514,39 +3757,61 @@
             // 隐藏按钮区域，显示 loading
             const btnArea = document.querySelector('#creatorSuccessModal .modal-body > div:nth-child(2)');
             const statusArea = document.getElementById('generationStatusArea');
+            const resultArea = document.getElementById('pitchSiteResultArea');
 
             if (btnArea) btnArea.style.display = 'none';
             if (statusArea) statusArea.style.display = 'block';
 
             try {
-                // 添加超时控制（10分钟）
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 600000);
-
+                // 1. 触发生成任务
                 const response = await fetch(`/api/creators/${creatorId}/generate`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    signal: controller.signal
+                    headers: { 'Content-Type': 'application/json' }
                 });
 
-                clearTimeout(timeoutId);
-                const data = await response.json();
-
-                if (response.ok) {
-                    // 成功，显示结果
-                    statusArea.style.display = 'none';
-                    const resultArea = document.getElementById('pitchSiteResultArea');
-                    if (resultArea) resultArea.style.display = 'block';
-
-                    // 刷新列表
-                    await loadCreators(true);
-                } else {
-                    throw new Error(data.detail || '生成失败');
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || '启动生成任务失败');
                 }
+
+                // 2. 开始轮询状态
+                // 状态映射：pending -> generating -> completed / failed
+                const checkInterval = setInterval(async () => {
+                    try {
+                        const statusResp = await fetch(`/api/creators/${creatorId}/status`);
+                        if (statusResp.ok) {
+                            const statusData = await statusResp.json();
+                            const status = statusData.status;
+
+                            if (status === 'completed') {
+                                clearInterval(checkInterval);
+                                if (statusArea) statusArea.style.display = 'none';
+                                if (resultArea) resultArea.style.display = 'block';
+                                // 刷新列表
+                                loadCreators(true);
+                            } else if (status === 'failed') {
+                                clearInterval(checkInterval);
+                                statusArea.innerHTML = `
+                                    <div style="color: #dc3545; text-align: center;">
+                                        <strong>生成任务失败</strong><br>
+                                        请检查日志或重试
+                                    </div>
+                                    <div style="text-align: center; margin-top: 1rem;">
+                                        <button class="btn btn-secondary" onclick="closeCreatorSuccessModal()">关闭</button>
+                                    </div>
+                                `;
+                            }
+                            // 否则继续轮询 (pending / generating)
+                        }
+                    } catch (e) {
+                        console.error("Polling error", e);
+                    }
+                }, 5000); // 每 5 秒轮询一次
+
             } catch (error) {
                 statusArea.innerHTML = `
                     <div style="color: #dc3545; text-align: center;">
-                        <strong>生成失败</strong><br>
+                        <strong>启动失败</strong><br>
                         ${error.message}
                     </div>
                     <div style="text-align: center; margin-top: 1rem;">

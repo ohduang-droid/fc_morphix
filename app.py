@@ -12,7 +12,7 @@ from email.mime.multipart import MIMEMultipart
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, BackgroundTasks
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -779,19 +779,56 @@ async def send_email(payload: SendEmailRequest):
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
+@app.get("/api/creators/{creator_id}/status")
+async def get_creator_status(creator_id: str):
+    """
+    获取指定 Creator 的状态
+    """
+    try:
+        supabase_url = os.getenv("SUPABASE_URL")
+        supabase_api_key = os.getenv("SUPABASE_API_KEY")
+        
+        if not supabase_url or not supabase_api_key:
+            raise HTTPException(
+                status_code=500,
+                detail="缺少 Supabase 配置"
+            )
+            
+        url = f"{supabase_url.rstrip('/')}/rest/v1/creator?creator_id=eq.{creator_id}&select=status"
+        headers = {
+            "apikey": supabase_api_key,
+            "Authorization": f"Bearer {supabase_api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(
+            None,
+            lambda: requests.get(url, headers=headers, timeout=10)
+        )
+        
+        if response.ok:
+            data = response.json()
+            if data and len(data) > 0:
+                return {"status": data[0].get("status", "pending")}
+            else:
+                raise HTTPException(status_code=404, detail="Creator not found")
+        else:
+            raise HTTPException(status_code=500, detail=f"Failed to fetch status: {response.text}")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/api/creators/{creator_id}/generate")
-async def generate_creator(creator_id: str):
+async def generate_creator(creator_id: str, background_tasks: BackgroundTasks):
     """
     为指定的 Creator 执行生成任务（步骤 1-4）
-    注意：此操作可能需要较长时间（几分钟），请耐心等待
+    注意：此接口现在是异步的，会立即返回任务已启动的状态。
+    前端需要轮询 Creator 的状态来确认任务完成。
     
-    重要：此接口不使用任何缓存，所有步骤（1-4）都会完全重新执行
-    - 步骤1：从 Supabase 重新获取 Creator 信息
-    - 步骤2：重新调用 Dify API 生成 prompt
-    - 步骤3：重新生成所有 magnet 图片
-    - 步骤4：重新生成场景图
-    
-    修复：使用线程池执行同步操作，避免阻塞事件循环
+    状态流转: pending -> generating -> completed (或 failed)
     """
     try:
         # 获取 Supabase 配置
@@ -804,45 +841,37 @@ async def generate_creator(creator_id: str):
                 detail="缺少 Supabase 配置（SUPABASE_URL 或 SUPABASE_API_KEY 环境变量）"
             )
         
-        logger.info(f"开始为 Creator {creator_id} 执行生成任务")
+        def run_generation_task(c_id: str, s_url: str, s_key: str):
+            try:
+                logger.info(f"后台任务开始: Creator {c_id} 生成")
+                TaskExecutor().execute_all_steps(
+                    creator_id=c_id,
+                    max_workers=1,
+                    supabase_url=s_url,
+                    supabase_api_key=s_key,
+                    use_cache=False
+                )
+                logger.info(f"后台任务完成: Creator {c_id}")
+            except Exception as e:
+                logger.error(f"后台任务异常: Creator {c_id} - {str(e)}")
+
+        # 添加到后台任务队列
+        background_tasks.add_task(run_generation_task, creator_id, supabase_url, supabase_api_key)
         
-        # 在线程池中执行同步操作，避免阻塞事件循环
-        loop = asyncio.get_event_loop()
-        # 使用线程池执行同步的 TaskExecutor
-        # 重要：设置 use_cache=False，确保步骤1-4完全重新执行，不使用任何缓存
-        result = await loop.run_in_executor(
-            None,  # 使用默认线程池
-            lambda: TaskExecutor().execute_all_steps(
-                creator_id=creator_id,
-                max_workers=1,  # 单个 Creator 使用单线程
-                supabase_url=supabase_url,
-                supabase_api_key=supabase_api_key,
-                use_cache=False  # 禁用缓存，完全重新执行所有步骤
-            )
-        )
+        logger.info(f"已提交 Creator {creator_id} 的生成任务到后台")
         
-        if result["status"] == "success":
-            logger.info(f"Creator {creator_id} 生成任务完成")
-            return {
-                "status": "success",
-                "message": f"Creator {creator_id} 生成完成",
-                "creator_id": creator_id,
-                "result": result
-            }
-        else:
-            error_msg = result.get("error", "生成失败")
-            logger.error(f"Creator {creator_id} 生成任务失败: {error_msg}")
-            raise HTTPException(
-                status_code=500,
-                detail=error_msg
-            )
+        return {
+            "status": "processing",
+            "message": f"Creator {creator_id} 生成任务已提交后台处理",
+            "creator_id": creator_id
+        }
             
     except HTTPException:
         raise
     except Exception as exc:
         import traceback
-        error_detail = f"生成失败: {str(exc)}"
-        logger.error(f"Creator {creator_id} 生成任务异常: {error_detail}")
+        error_detail = f"提交生成任务失败: {str(exc)}"
+        logger.error(f"Creator {creator_id} 提交任务异常: {error_detail}")
         if os.getenv("DEBUG", "false").lower() == "true":
             error_detail += f"\n{traceback.format_exc()}"
         raise HTTPException(status_code=500, detail=error_detail) from exc

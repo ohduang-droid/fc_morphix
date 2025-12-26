@@ -20,3 +20,5 @@ cache/
 # OS
 .DS_Store
 logs/
+
+.env
