@@ -285,7 +285,7 @@ def write_to_supabase(
 ) -> Dict[str, Any]:
     """
     将单个 magnet 数据写入 Supabase
-    写入前先检查是否存在（基于 creator_id + context_id），如果存在则更新，否则插入
+    写入前先检查是否存在（基于 creator_id + context_id + type），如果存在则更新，否则插入
     """
     api_url = f"{supabase_url.rstrip('/')}/rest/v1/magnet_image"
     
@@ -312,19 +312,19 @@ def write_to_supabase(
     }
     
     try:
-        # 先检查记录是否存在（第二步：只检查 creator_id + context_id）
+        # 先检查记录是否存在（基于 creator_id + context_id + type）
         exists, existing_record = check_record_exists(
             creator_id=creator_id,
             context_id=context_id,
             supabase_url=supabase_url,
             supabase_api_key=supabase_api_key,
-            type=None  # 第二步不检查type
+            type=record_type  # 检查时包含 type 字段，确保唯一约束匹配
         )
         
         if exists:
             # 记录已存在，进行更新
-            # 第二步更新时使用 creator_id + context_id 作为查询条件
-            update_url = f"{api_url}?creator_id=eq.{creator_id}&context_id=eq.{context_id}"
+            # 更新时使用 creator_id + context_id + type 作为查询条件，确保唯一性
+            update_url = f"{api_url}?creator_id=eq.{creator_id}&context_id=eq.{context_id}&type=eq.{record_type}"
             
             try:
                 update_response = requests.patch(update_url, headers=headers, json=payload, timeout=30)
@@ -349,34 +349,85 @@ def write_to_supabase(
                     result["_operation"] = "updated"
                 return result
             except requests.exceptions.RequestException as e:
-                raise RuntimeError(f"记录已存在但更新失败 (creator_id={creator_id}, context_id={context_id}): {str(e)}") from e
+                raise RuntimeError(f"记录已存在但更新失败 (creator_id={creator_id}, context_id={context_id}, type={record_type}): {str(e)}") from e
         else:
             # 记录不存在，进行插入
-            response = requests.post(api_url, headers=headers, json=payload, timeout=30)
-            
-            # 如果插入失败
-            if not response.ok:
-                error_detail = f"HTTP {response.status_code}"
-                try:
-                    error_body = response.json()
-                    error_detail += f": {error_body}"
-                except:
-                    error_detail += f": {response.text[:200]}"
-                raise RuntimeError(f"写入 Supabase 失败 - {error_detail}")
-            
-            # 插入成功
-            response.raise_for_status()
-            result = response.json()
-            
-            # Supabase 可能返回数组或单个对象
-            if isinstance(result, list):
-                result = result[0] if result else {}
-            
-            # 标记为插入操作
-            if isinstance(result, dict):
-                result["_operation"] = "inserted"
-            
-            return result
+            try:
+                response = requests.post(api_url, headers=headers, json=payload, timeout=30)
+                
+                # 如果插入失败
+                if not response.ok:
+                    # 如果是唯一约束冲突（HTTP 409），转为更新操作
+                    if response.status_code == 409:
+                        print(f"        ℹ️  插入时发现记录已存在（唯一约束冲突），转为更新操作 (creator_id={creator_id}, context_id={context_id}, type={record_type})")
+                        # 尝试更新现有记录
+                        update_url = f"{api_url}?creator_id=eq.{creator_id}&context_id=eq.{context_id}&type=eq.{record_type}"
+                        update_response = requests.patch(update_url, headers=headers, json=payload, timeout=30)
+                        
+                        if not update_response.ok:
+                            error_detail = f"HTTP {update_response.status_code}"
+                            try:
+                                error_body = update_response.json()
+                                error_detail += f": {error_body}"
+                            except:
+                                error_detail += f": {update_response.text[:200]}"
+                            raise RuntimeError(f"更新 Supabase 失败 - {error_detail}")
+                        
+                        update_response.raise_for_status()
+                        result = update_response.json()
+                        
+                        # Supabase 可能返回数组或单个对象
+                        if isinstance(result, list):
+                            result = result[0] if result else {}
+                        # 标记为更新操作
+                        if isinstance(result, dict):
+                            result["_operation"] = "updated"
+                        return result
+                    else:
+                        # 其他错误，直接抛出
+                        error_detail = f"HTTP {response.status_code}"
+                        try:
+                            error_body = response.json()
+                            error_detail += f": {error_body}"
+                        except:
+                            error_detail += f": {response.text[:200]}"
+                        raise RuntimeError(f"写入 Supabase 失败 - {error_detail}")
+                
+                # 插入成功
+                response.raise_for_status()
+                result = response.json()
+                
+                # Supabase 可能返回数组或单个对象
+                if isinstance(result, list):
+                    result = result[0] if result else {}
+                
+                # 标记为插入操作
+                if isinstance(result, dict):
+                    result["_operation"] = "inserted"
+                
+                return result
+            except requests.exceptions.RequestException as e:
+                # 如果请求异常且是 409 错误，尝试更新
+                if hasattr(e, 'response') and e.response is not None and e.response.status_code == 409:
+                    print(f"        ℹ️  插入时发现记录已存在（唯一约束冲突），转为更新操作 (creator_id={creator_id}, context_id={context_id}, type={record_type})")
+                    # 尝试更新现有记录
+                    update_url = f"{api_url}?creator_id=eq.{creator_id}&context_id=eq.{context_id}&type=eq.{record_type}"
+                    try:
+                        update_response = requests.patch(update_url, headers=headers, json=payload, timeout=30)
+                        update_response.raise_for_status()
+                        result = update_response.json()
+                        
+                        # Supabase 可能返回数组或单个对象
+                        if isinstance(result, list):
+                            result = result[0] if result else {}
+                        # 标记为更新操作
+                        if isinstance(result, dict):
+                            result["_operation"] = "updated"
+                        return result
+                    except requests.exceptions.RequestException as update_e:
+                        raise RuntimeError(f"插入失败后更新也失败 (creator_id={creator_id}, context_id={context_id}, type={record_type}): {str(update_e)}") from update_e
+                else:
+                    raise RuntimeError(f"写入 Supabase 请求异常: {str(e)}") from e
         
     except requests.exceptions.RequestException as e:
         raise RuntimeError(f"写入 Supabase 请求异常: {str(e)}") from e
